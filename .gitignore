@@ -38,6 +38,24 @@ yarn-error.*
 
 app-example
 
-# generated native folders
-/ios
-/android
+# editor / IDE
+.vscode/
+.idea/
+
+# logs
+*.log
+
+# EAS build outputs
+*.apk
+*.aab
+*.ipa
+
+# expo extra
+.expo-shared/
+
+# env (explicit, safe rakhna)
+.env
+.env.local
+
+# misc
+*.tmp
