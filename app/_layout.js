@@ -15,9 +15,9 @@ export default function RootLayout() {
 
   useEffect(() => {
     Asset.loadAsync([
-      require('C:/Users/User/Desktop/HomeServiceApp/assets/images/onboarding/onboarding1.png'),
-      require('C:/Users/User/Desktop/HomeServiceApp/assets/images/onboarding/onboarding2.png'),
-      require('C:/Users/User/Desktop/HomeServiceApp/assets/images/onboarding/onboarding3.png'),
+      require('../assets/images/onboarding/onboarding1.png'),
+      require('../assets/images/onboarding/onboarding2.png'),
+      require('../assets/images/onboarding/onboarding3.png'),
       require('../assets/images/login-illustration.png'),
       require('../assets/images/fingerprint.png'),
       require('../assets/images/not-found.png')
