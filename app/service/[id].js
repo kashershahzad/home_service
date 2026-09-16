@@ -14,8 +14,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { images } from '../../assets/images/image';
 import { useBookmarks } from '../../context/BookmarkContext';
-import { BASE_URL } from '../../utils/api'; 
+import { BASE_URL } from '../../utils/api';
 const COLORS = {
   primary: '#7310FF',
   text: '#000000',
@@ -152,15 +153,23 @@ export default function ServiceDetailScreen() {
   }, [id, fetchDetail]);
   const handleBookNow = () => {
     if (!provider) return;
+    const bookingParams = {
+      id: provider._id,
+      title: provider.title,
+      name: provider.name,
+      price: String(provider.price),
+      image: provider.image,
+    };
+    const isHouseCleaning =
+      String(provider.title || '')
+        .toLowerCase()
+        .includes('house cleaning') ||
+      (String(provider.category || '').toLowerCase() === 'cleaning' &&
+        String(provider.title || '').toLowerCase().includes('house'));
+
     router.push({
-      pathname: '/booking-details',
-      params: {
-        id: provider._id,
-        title: provider.title,
-        name: provider.name,
-        price: String(provider.price),
-        image: provider.image,
-      },
+      pathname: isHouseCleaning ? '/house-cleaning' : '/booking-details',
+      params: bookingParams,
     });
   };
 
@@ -210,7 +219,7 @@ export default function ServiceDetailScreen() {
               style={styles.circleBtn}
               onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
             >
-              <Ionicons name="chevron-back" size={22} color="#fff" />
+              <Ionicons name="chevron-back" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -220,11 +229,7 @@ export default function ServiceDetailScreen() {
           <View style={styles.titleRow}>
             <Text style={styles.title}>{provider.title}</Text>
             <TouchableOpacity hitSlop={HIT_SLOP} onPress={() => toggleBookmark(provider)}>
-              <Ionicons
-                name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
-                size={22}
-                color={COLORS.primary}
-              />
+              <Image source={ isBookmarked ? images.savedIcon : images.saveIcon} style={styles.saveIcon} />
             </TouchableOpacity>
           </View>
 
@@ -382,7 +387,7 @@ export default function ServiceDetailScreen() {
                       </View>
                       <Text style={styles.reviewComment}>{r.comment}</Text>
                       <View style={styles.reviewFooterRow}>
-                        <Ionicons name="heart-outline" size={13} color={COLORS.subtext} />
+                        <Image source={images.heartIcon} style={styles.heartIcon} />
                         <Text style={styles.reviewFooterText}>{r.likes}</Text>
                         <Text style={styles.reviewFooterDot}>·</Text>
                         <Text style={styles.reviewFooterText}>{timeAgo(r.createdAt)}</Text>
@@ -503,7 +508,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    // backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -511,6 +516,7 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: 20, paddingTop: 18 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 25, fontWeight: '600', color: '#000', flex: 1, marginRight: 12 },
+  saveIcon: { width: 24, height: 24, resizeMode: 'contain', tintColor: COLORS.primary },
 
   providerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   providerName: { fontSize: 14, fontWeight: '700', color: COLORS.primary, marginRight: 10 },
@@ -618,7 +624,7 @@ const styles = StyleSheet.create({
   reviewFooterRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
   reviewFooterText: { fontSize: 13.5, color: COLORS.subtext, marginLeft: 4 },
   reviewFooterDot: { fontSize: 13.5, color: COLORS.subtext, marginHorizontal: 6 },
-
+  heartIcon: { width: 20, height: 20, resizeMode: 'contain',},
   bottomBar: {
     position: 'absolute',
     left: 0,

@@ -124,6 +124,15 @@ export default function AddressLocationScreen() {
 
   const handleContinue = () => {
     if (!isFormValid) return;
+    router.push({
+      pathname: '/payment-method',
+      params: {
+        ...params,
+        address: address.trim(),
+        latitude: String(markerCoordinate.latitude),
+        longitude: String(markerCoordinate.longitude),
+      },
+    });
   };
 
   return (

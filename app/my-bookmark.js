@@ -1,17 +1,18 @@
-import React, { useMemo, useState, useRef } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useMemo, useRef, useState } from 'react';
 import {
-  StyleSheet,
-  Text,
-  View,
+  Animated,
   FlatList,
   Image,
-  TouchableOpacity,
-  Pressable,
-  Animated,
   PanResponder,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { images } from '../assets/images/image';
 import { useBookmarks } from '../context/BookmarkContext';
 
 const COLORS = {
@@ -161,7 +162,7 @@ export default function MyBookmarkScreen() {
               hitSlop={HIT_SLOP}
               style={styles.bookmarkButton}
             >
-              <Ionicons name="bookmark" size={20} color={COLORS.primary} />
+              <Image source={ images.savedIcon} style={styles.saveIcon} />
             </TouchableOpacity>
           </TouchableOpacity>
         )}
@@ -198,7 +199,7 @@ export default function MyBookmarkScreen() {
                         </Text>
                       </View>
                     </View>
-                    <Ionicons name="bookmark" size={20} color={COLORS.primary} />
+                    <Image source={ images.savedIcon} style={styles.saveIcon} />
                   </View>
                 )}
 
@@ -337,6 +338,7 @@ const styles = StyleSheet.create({
     top: 14,
     right: 14,
   },
+  saveIcon: { width: 24, height: 24, resizeMode: 'contain', },
   image: { width: 90, height: 90, borderRadius: 16, marginRight: 14 },
   name: { fontSize: 13, color: COLORS.subtext },
   serviceTitle: { fontSize: 16, fontWeight: '700', color: '#000', marginTop: 3 },

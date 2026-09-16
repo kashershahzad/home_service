@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-export const BASE_URL = 'https://recluse-unwashed-bakery.ngrok-free.dev/api';
+export const BASE_URL = 'http://192.168.0.216:5001/api';
 
 async function request(path, { method = 'GET', body, token } = {}) {
   const headers = {

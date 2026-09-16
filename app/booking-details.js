@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
 import {
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
     StyleSheet,
     Text,
-    View,
-    TextInput,
     TouchableOpacity,
-    ScrollView,
-    Platform,
-    KeyboardAvoidingView,
+    View
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { images } from '../assets/images/image';
 
 const DAY_LABELS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 const MONTH_NAMES = [
@@ -83,6 +84,7 @@ export default function BookingDetailsScreen() {
         router.push({
             pathname: '/add-promo',
             params: { returnTo: 'booking-details' },
+            id: String(params?.id ?? ''),
         });
     };
 
@@ -116,10 +118,19 @@ export default function BookingDetailsScreen() {
                 showsVerticalScrollIndicator={false}
             >
                 <View style={styles.headerRow}>
-                    <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-                        <Ionicons name="chevron-back" size={26} color="#000" />
+                    <View style={styles.headerLeft}>
+                        <TouchableOpacity style={styles.backButton} onPress={
+                            () => {
+                                router.back();
+                            }
+                        }>
+                            <Ionicons name="chevron-back" size={26} color="#000" />
+                        </TouchableOpacity>
+                        <Text style={styles.title}>Booking Details</Text>
+                    </View>
+                    <TouchableOpacity>
+                        <Image source={images.moreIcon} style={styles.moreIcon} />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Booking Details</Text>
                 </View>
 
                 {/* ---------- Calendar ---------- */}
@@ -131,10 +142,10 @@ export default function BookingDetailsScreen() {
                         </Text>
                         <View style={styles.calendarNavRow}>
                             <TouchableOpacity onPress={goPrevMonth} style={styles.calendarNavButton}>
-                                <Ionicons name="chevron-back" size={18} color="#7310FF" />
+                                <Ionicons name="chevron-back" size={18} color="#7210FF" />
                             </TouchableOpacity>
                             <TouchableOpacity onPress={goNextMonth} style={styles.calendarNavButton}>
-                                <Ionicons name="chevron-forward" size={18} color="#7310FF" />
+                                <Ionicons name="chevron-forward" size={18} color="#7210FF" />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -215,8 +226,8 @@ export default function BookingDetailsScreen() {
                     })}
                 </ScrollView>
 
-                {/* ---------- Promo Code ---------- */}
                 <Text style={styles.sectionLabel}>Promo Code</Text>
+
                 {promoCode ? (
                     <View style={styles.promoChipRow}>
                         <View style={styles.promoChip}>
@@ -225,19 +236,39 @@ export default function BookingDetailsScreen() {
                                 onPress={removePromo}
                                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             >
-                                <Ionicons name="close" size={16} color="#fff" />
+                                <Ionicons name="close-outline" size={18} color="#fff" />
                             </TouchableOpacity>
                         </View>
+                        <TouchableOpacity
+                            style={styles.promoAddButton}
+                            onPress={openPromoScreen}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="add" size={22} color="#7310FF" />
+                        </TouchableOpacity>
                     </View>
                 ) : (
-                    <TouchableOpacity style={styles.promoRow} onPress={openPromoScreen} activeOpacity={0.8}>
-                        <Text style={styles.promoPlaceholder}>Enter Promo Code</Text>
-                        <View style={styles.promoAddButton}>
-                            <Ionicons name="add" size={20} color="#fff" />
-                        </View>
-                    </TouchableOpacity>
+                    <View style={styles.promoRow}>
+                        <TouchableOpacity
+                            style={styles.promoInput}
+                            onPress={openPromoScreen}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={styles.promoPlaceholder}>Enter Promo Code</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.promoAddButton}
+                            onPress={openPromoScreen}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="add" size={22} color="#7310FF" />
+                        </TouchableOpacity>
+                    </View>
                 )}
 
+            </ScrollView>
+
+            <View style={styles.footer}>
                 <TouchableOpacity
                     style={[styles.primaryButton, !isFormValid && styles.primaryButtonDisabled]}
                     onPress={handleContinue}
@@ -245,7 +276,7 @@ export default function BookingDetailsScreen() {
                 >
                     <Text style={styles.primaryButtonText}>Continue</Text>
                 </TouchableOpacity>
-            </ScrollView>
+            </View>
         </KeyboardAvoidingView>
     );
 }
@@ -253,8 +284,10 @@ export default function BookingDetailsScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#FFFFFF' },
     scrollContent: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 },
-    headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+    headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+    headerLeft: { flexDirection: 'row', alignItems: 'center' },
     backButton: { marginRight: 12 },
+    moreIcon: { width: 24, height: 24, resizeMode: 'contain', },
     title: { fontSize: 22, fontWeight: '800', color: '#000000' },
     sectionLabel: { fontSize: 15, fontWeight: '700', color: '#000', marginBottom: 10 },
     subLabel: { fontSize: 12, color: '#9A9A9A', marginTop: 2 },
@@ -282,7 +315,7 @@ const styles = StyleSheet.create({
         width: 30,
         height: 30,
         borderRadius: 15,
-        backgroundColor: '#fff',
+        // backgroundColor: '#fff',
         alignItems: 'center',
         justifyContent: 'center',
         marginLeft: 8,
@@ -306,11 +339,11 @@ const styles = StyleSheet.create({
     dayCircle: {
         width: 28,
         height: 28,
-        borderRadius: 14,
+        borderRadius: 140,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    dayCircleSelected: { backgroundColor: '#7310FF' },
+    dayCircleSelected: { backgroundColor: '#7310FF', borderRadius: 140 },
     dayText: { fontSize: 13, color: '#000' },
     dayTextSelected: { color: '#fff', fontWeight: '700' },
 
@@ -321,11 +354,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         padding: 16,
         marginBottom: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 3,
+        boxShadow: "0px 0px 32px 0px rgba(0, 0, 0, 0.05)",
     },
     workingHoursRow: {
         flexDirection: 'row',
@@ -364,34 +393,68 @@ const styles = StyleSheet.create({
     promoRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#F5F5F5',
-        borderRadius: 30,
-        paddingHorizontal: 18,
-        paddingVertical: 8,
         marginBottom: 30,
+        gap: 12,
     },
-    promoPlaceholder: { fontSize: 14, color: '#9A9A9A' },
+    promoInput: {
+        flex: 1,
+        backgroundColor: '#F5F5F5',
+        borderRadius: 15,
+        paddingHorizontal: 18,
+        paddingVertical: 16,
+    },
+    promoPlaceholder: {
+        fontSize: 14,
+        color: '#9A9A9A',
+    },
     promoAddButton: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-        backgroundColor: '#7310FF',
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#EDE4FF', // light purple
         alignItems: 'center',
         justifyContent: 'center',
     },
-    promoChipRow: { marginBottom: 30 },
+    promoChipRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 30,
+        gap: 12,
+    },
     promoChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        alignSelf: 'flex-start',
         backgroundColor: '#7310FF',
-        borderRadius: 20,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
+        borderRadius: 30,
+        paddingHorizontal: 18,
+        paddingVertical: 14,
     },
-    promoChipText: { color: '#fff', fontWeight: '600', fontSize: 16, marginRight: 10 },
+    promoChipText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 15,
+        marginRight: 10,
+    },
+    promoAddButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#EDE4FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
 
+    footer: {
+        paddingHorizontal: 24,
+        paddingTop: 20,
+        paddingBottom: 36,
+        // paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        boxShadow: "0px 0px 22px 0px rgba(0, 0, 0, 0.1)",
+
+    },
     primaryButton: {
         backgroundColor: '#7310FF',
         borderRadius: 30,

@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, FlatList, Image, ActivityIndicator, } from 'react-native';
-import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { serviceApi } from '../utils/api';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View, } from 'react-native';
+import { images } from '../assets/images/image';
+import FilterModal from '../constants/FilterModal';
 import { useBookmarks } from '../context/BookmarkContext';
-import FilterModal from '../constants/FilterModal'; 
+import { serviceApi } from '../utils/api';
 
 const COLORS = {
     primary: '#7310FF',
@@ -164,6 +165,7 @@ export default function SearchScreen() {
             <View style={styles.searchRow}>
                 <View style={[styles.searchBar, isFocused && styles.searchBarFocused]}>
                     <Feather name="search" size={18} color={COLORS.subtext} />
+
                     <TextInput
                         ref={inputRef}
                         placeholder="Search"
@@ -180,11 +182,7 @@ export default function SearchScreen() {
                         hitSlop={HIT_SLOP}
                         onPress={() => setFilterVisible(true)}
                     >
-                        <Feather
-                            name="sliders"
-                            size={18}
-                            color={filtersActive ? COLORS.primary : COLORS.subtext}
-                        />
+                        <Image source={images.searchFilter} style={styles.filterIcon} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -322,6 +320,7 @@ const styles = StyleSheet.create({
     },
     searchBarFocused: {backgroundColor: '#F1E7FF',borderColor: COLORS.primary,},
     searchInput: { flex: 1, fontSize: 14.5, color: COLORS.text, marginLeft: 8 },
+    filterIcon: { width: 18, height: 18, resizeMode: 'contain', tintColor: COLORS.subtext },
     recentHeader: {flexDirection: 'row',justifyContent: 'space-between',alignItems: 'center',marginBottom: 10, },
     recentTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text },
     clearAll: { fontSize: 13, fontWeight: '600', color: COLORS.primary },

@@ -1,27 +1,28 @@
-import React from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import {
+  Image,
   StyleSheet,
   Text,
-  View,
   TouchableOpacity,
+  View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { images } from '../assets/images/image';
 
 const ALL_SERVICES = [
-  { id: '1', label: 'Cleaning', icon: 'spray-bottle', bg: '#EFE7FF', color: '#8A5CF6' },
-  { id: '2', label: 'Repairing', icon: 'tools', bg: '#FFE9EC', color: '#FF6F91' },
-  { id: '3', label: 'Painting', icon: 'format-paint', bg: '#E4F6FF', color: '#3AAFFF' },
-  { id: '4', label: 'Laundry', icon: 'washing-machine', bg: '#FFF6DE', color: '#F5B301' },
-  { id: '5', label: 'Appliance', icon: 'fridge-outline', bg: '#FFE4EC', color: '#FF6F91' },
-  { id: '6', label: 'Plumbing', icon: 'pipe-wrench', bg: '#E6FBEF', color: '#2ECC71' },
-  { id: '7', label: 'Shifting', icon: 'truck-outline', bg: '#E4F6FF', color: '#3AAFFF' },
-  { id: '8', label: 'Beauty', icon: 'lipstick', bg: '#F0EEFB', color: '#8A5CF6' },
-  { id: '9', label: 'AC Repair', icon: 'air-conditioner', bg: '#E6FBEF', color: '#2ECC71' },
-  { id: '10', label: 'Vehicle', icon: 'car-outline', bg: '#E4F6FF', color: '#3AAFFF' },
-  { id: '11', label: 'Electronics', icon: 'television', bg: '#FFF6DE', color: '#F5B301' },
-  { id: '12', label: 'Massage', icon: 'hand-heart-outline', bg: '#FFE4EC', color: '#FF6F91' },
-  { id: '13', label: "Men's Salon", icon: 'account-tie', bg: '#F0EEFB', color: '#8A5CF6' },
+  { id: '1', label: 'Cleaning', icon: images.cleaningIcon, bg: '#EFE7FF', color: '#8A5CF6' },
+  { id: '2', label: 'Repairing', icon: images.repairingIcon, bg: '#FFE9EC', color: '#FF6F91' },
+  { id: '3', label: 'Painting', icon: images.paintingIcon, bg: '#E4F6FF', color: '#3AAFFF' },
+  { id: '4', label: 'Laundry', icon: images.laundryIcon, bg: '#FFF6DE', color: '#F5B301' },
+  { id: '5', label: 'Appliance', icon: images.applianceIcon, bg: '#FFE4EC', color: '#FF6F91' },
+  { id: '6', label: 'Plumbing', icon: images.plumbingIcon, bg: '#E6FBEF', color: '#2ECC71' },
+  { id: '7', label: 'Shifting', icon: images.shiftingIcon, bg: '#E4F6FF', color: '#3AAFFF' },
+  { id: '8', label: 'Beauty', icon: images.beautyIcon, bg: '#F0EEFB', color: '#8A5CF6' },
+  { id: '9', label: 'AC Repair', icon: images.acRepairIcon, bg: '#E6FBEF', color: '#2ECC71' },
+  { id: '10', label: 'Vehicle', icon: images.vehicleRepairIcon, bg: '#E4F6FF', color: '#3AAFFF' },
+  { id: '11', label: 'Electronics', icon: images.electricianIcon, bg: '#FFF6DE', color: '#F5B301' },
+  { id: '12', label: 'Massage', icon: images.massageIcon, bg: '#FFE4EC', color: '#FF6F91' },
+  { id: '13', label: "Men's Salon", icon: images.mensSpaIcon, bg: '#F0EEFB', color: '#8A5CF6' },
 ];
 
 export default function AllServicesScreen() {
@@ -30,11 +31,15 @@ export default function AllServicesScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
+        <View style={styles.headerLeft}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={26} color="#000" />
         </TouchableOpacity>
         <Text style={[styles.title, { marginLeft: 12 }]}>All Services</Text>
-        <View style={{ flex: 1 }} />
+        </View>
+        <TouchableOpacity>
+        <Image source={images.moreIcon} style={styles.searchIcon} />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.grid}>
@@ -45,7 +50,7 @@ export default function AllServicesScreen() {
             onPress={() => router.push(`/category/${s.label}`)}
           >
             <View style={[styles.iconWrap, { backgroundColor: s.bg }]}>
-              <MaterialCommunityIcons name={s.icon} size={24} color={s.color} />
+              <Image source={s.icon} style={styles.serviceIcon} />
             </View>
             <Text style={styles.label} numberOfLines={1}>{s.label}</Text>
           </TouchableOpacity>
@@ -60,8 +65,13 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingTop: 60,
     paddingBottom: 24,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   title: {
     fontFamily: 'Roboto_800ExtraBold',
@@ -69,6 +79,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#000',
   },
+  searchIcon: { width: 24, height: 24, resizeMode: 'contain', },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -84,6 +95,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 10,
   },
+  serviceIcon: { width: 24, height: 24, resizeMode: 'contain', },
   label: {
     fontSize: 13,
     color: '#000',

@@ -1,7 +1,7 @@
-import React from 'react';
-import { StyleSheet, Text, View, FlatList, Image, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { images } from '../assets/images/image';
 import { OFFERS } from '../constants/offers';
 
 const HIT_SLOP = { top: 14, bottom: 14, left: 14, right: 14 };
@@ -26,7 +26,7 @@ export default function SpecialOffersScreen() {
         </TouchableOpacity>
         <Text style={styles.title}>Special Offers</Text>
         <TouchableOpacity style={styles.moreBtn} hitSlop={HIT_SLOP}>
-          <Ionicons name="ellipsis-horizontal" size={20} color="#000" />
+          <Image source={images.moreIcon} style={styles.moreIcon} />
         </TouchableOpacity>
       </View>
 
@@ -72,6 +72,7 @@ const styles = StyleSheet.create({
     width: 30,
     alignItems: 'flex-end',
   },
+  moreIcon: { width: 24, height: 24, resizeMode: 'contain', },
   listContent: {
     paddingHorizontal: 20,
     paddingTop: 6,

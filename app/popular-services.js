@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
-    StyleSheet,
-    Text,
-    View,
+    ActivityIndicator,
     FlatList,
     Image,
-    TouchableOpacity,
-    ActivityIndicator,
     ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { serviceApi } from '../utils/api';
+import { images } from '../assets/images/image';
 import { useBookmarks } from '../context/BookmarkContext';
+import { serviceApi } from '../utils/api';
 
 const COLORS = {
     primary: '#7310FF',
@@ -95,10 +96,15 @@ export default function PopularServicesScreen() {
     return (
         <View style={styles.screen}>
             <View style={styles.header}>
+                <View style={styles.headerLeft}>
                 <TouchableOpacity hitSlop={HIT_SLOP} onPress={() => router.back()}>
                     <Ionicons name="chevron-back" size={26} color="#000" />
                 </TouchableOpacity>
                 <Text style={styles.title}>Most Popular Service</Text>
+                </View>
+                <TouchableOpacity hitSlop={HIT_SLOP} onPress={() => router.push('/search')}>
+                    <Image source={images.searchIcon} style={styles.searchIcon} />
+                </TouchableOpacity>
             </View>
 
             <FilterChips
@@ -165,10 +171,15 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         paddingHorizontal: 20,
         paddingTop: 60,
         paddingBottom: 16,
         flexShrink: 0,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     title: {
         fontFamily: 'Roboto_800ExtraBold',
@@ -177,6 +188,7 @@ const styles = StyleSheet.create({
         color: '#000',
         marginLeft: 14,
     },
+    searchIcon: { width: 24, height: 24, resizeMode: 'contain', },
     filterScroll: {
         flexGrow: 0,
         flexShrink: 0,

@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    TouchableOpacity,
-    SafeAreaView,
-} from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 const PROMOS = [
     {
         id: '1',
@@ -121,7 +121,13 @@ export default function AddPromoScreen() {
                         if (router.canGoBack()) {
                             router.back();
                         } else {
-                            router.replace('/');
+                            router.replace({
+                                athname: '/booking-details',
+                                params: {
+                                    promoCode: selectedPromo.label,
+                                    id: params?.id,
+                                },
+                            });
                         }
                     }}
                 >
@@ -167,7 +173,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 12,
-        paddingVertical: 14,
+        paddingTop: 60,
+        paddingBottom: 18,
     },
     headerIconBtn: {
         width: 34,
@@ -182,7 +189,7 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingHorizontal: 18,
-        paddingTop: 6,
+        paddingTop: 18,
         paddingBottom: 24,
     },
     card: {
@@ -191,12 +198,9 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderRadius: 20,
         padding: 18,
-        marginBottom: 18, 
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        elevation: 4,
+        marginBottom: 18,
+        boxShadow: '0px 0px 32px 0px rgba(0, 0, 0, 0.05)',
+
     },
     iconWrapper: {
         width: 56,

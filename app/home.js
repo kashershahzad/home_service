@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity, Image, FlatList, ActivityIndicator, Dimensions, } from 'react-native';
-import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { authApi, getToken, serviceApi } from '../utils/api';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useBookmarks } from '../context/BookmarkContext';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Dimensions, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { images } from '../assets/images/image';
 import { OFFERS } from '../constants/offers';
+import { useBookmarks } from '../context/BookmarkContext';
+import { authApi, getToken, serviceApi } from '../utils/api';
 
 const COLORS = {
   primary: '#7310FF',
@@ -15,6 +16,7 @@ const COLORS = {
   subtext: '#6B6B6B',
   chipBg: '#F1E7FF',
   star: '#FFB800',
+  lightGray: '#C3C3C3',
 };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -22,14 +24,14 @@ const OFFER_CARD_WIDTH = SCREEN_WIDTH - 40;
 const OFFER_CARD_SPACING = 16;
 
 const SERVICES = [
-  { id: '1', label: 'Cleaning', icon: 'spray-bottle', bg: '#EFE7FF', color: '#8A5CF6' },
-  { id: '2', label: 'Repairing', icon: 'tools', bg: '#FFE9EC', color: '#FF6F91' },
-  { id: '3', label: 'Painting', icon: 'format-paint', bg: '#E4F6FF', color: '#3AAFFF' },
-  { id: '4', label: 'Laundry', icon: 'washing-machine', bg: '#FFF6DE', color: '#F5B301' },
-  { id: '5', label: 'Appliance', icon: 'fridge-outline', bg: '#FFE4EC', color: '#FF6F91' },
-  { id: '6', label: 'Plumbing', icon: 'pipe-wrench', bg: '#E6FBEF', color: '#2ECC71' },
-  { id: '7', label: 'Shifting', icon: 'truck-outline', bg: '#E4F6FF', color: '#3AAFFF' },
-  { id: '8', label: 'More', icon: 'dots-horizontal', bg: '#F0EEFB', color: COLORS.primary },
+  { id: '1', label: 'Cleaning', icon: images.cleaningIcon, bg: '#EFE7FF', color: '#8A5CF6' },
+  { id: '2', label: 'Repairing', icon: images.repairingIcon, bg: '#FFE9EC', color: '#FF6F91' },
+  { id: '3', label: 'Painting', icon: images.paintingIcon, bg: '#E4F6FF', color: '#3AAFFF' },
+  { id: '4', label: 'Laundry', icon: images.laundryIcon, bg: '#FFF6DE', color: '#F5B301' },
+  { id: '5', label: 'Appliance', icon: images.applianceIcon, bg: '#FFE4EC', color: '#FF6F91' },
+  { id: '6', label: 'Plumbing', icon: images.plumbingIcon, bg: '#E6FBEF', color: '#2ECC71' },
+  { id: '7', label: 'Shifting', icon: images.shiftingIcon, bg: '#E4F6FF', color: '#3AAFFF' },
+  { id: '8', label: 'More', icon: images.moreSolidIcon, bg: '#F0EEFB', color: COLORS.primary },
 ];
 
 const HIT_SLOP = { top: 14, bottom: 14, left: 14, right: 14 };
@@ -145,14 +147,14 @@ export default function HomeScreen({ navigation }) {
               hitSlop={HIT_SLOP}
               onPress={() => router.push('/notifications')}
             >
-              <Ionicons name="notifications-outline" size={26} color={COLORS.text} />
+              <Image source={images.notificationIcon} style={styles.notificationIcon} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.iconBtn}
               hitSlop={HIT_SLOP}
               onPress={() => router.push('/my-bookmark')}
             >
-              <Ionicons name="bookmark-outline" size={26} color={COLORS.text} />
+              <Image source={images.saveIcon} style={styles.saveIcon} />
             </TouchableOpacity>
           </View>
         </View>
@@ -162,7 +164,7 @@ export default function HomeScreen({ navigation }) {
           activeOpacity={0.7}
           onPress={() => router.push('/search')}
         >
-          <Feather name="search" size={18} color={COLORS.subtext} />
+          <Feather name="search" size={18} color={COLORS.lightGray} />
           <Text style={styles.searchInput} numberOfLines={1}>
             Search
           </Text>
@@ -171,7 +173,7 @@ export default function HomeScreen({ navigation }) {
             hitSlop={HIT_SLOP}
             onPress={() => router.push({ pathname: '/search', params: { openFilter: '1' } })}
           >
-            <Feather name="sliders" size={18} color={COLORS.primary} />
+          <Image source={images.searchFilter} style={styles.searchIcon} />
           </TouchableOpacity>
         </TouchableOpacity>
 
@@ -232,7 +234,7 @@ export default function HomeScreen({ navigation }) {
               }
             >
               <View style={[styles.serviceIconWrap, { backgroundColor: s.bg }]}>
-                <MaterialCommunityIcons name={s.icon} size={22} color={s.color} />
+                <Image source={s.icon} style={styles.serviceIcon} />
               </View>
               <Text style={styles.serviceLabel}>{s.label}</Text>
             </TouchableOpacity>
@@ -302,11 +304,8 @@ export default function HomeScreen({ navigation }) {
                   hitSlop={HIT_SLOP}
                   onPress={() => toggleBookmark(item)}
                 >
-                  <Ionicons
-                    name={isBookmarked(item._id) ? 'bookmark' : 'bookmark-outline'}
-                    size={20}
-                    color={COLORS.primary}
-                  />
+              <Image source={ isBookmarked(item._id) ? images.savedIcon : images.saveIcon} style={styles.saveIcon} />
+
                 </TouchableOpacity>
               </TouchableOpacity>
             )}
@@ -379,8 +378,9 @@ const styles = StyleSheet.create({
     height: 38,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 14,
   },
+  notificationIcon: { width: 24, height: 24, resizeMode: 'contain', },
+  saveIcon: { width: 24, height: 24, resizeMode: 'contain', },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -390,8 +390,9 @@ const styles = StyleSheet.create({
     height: 50,
     marginTop: 20,
   },
-  searchInput: { flex: 1, fontSize: 14.5, color: COLORS.text, marginLeft: 8 },
+  searchInput: { flex: 1, fontSize: 14.5, color: COLORS.lightGray, marginLeft: 8 },
   filterIconBtn: { paddingLeft: 10, paddingVertical: 6, },
+  searchIcon: { width: 18, height: 18, resizeMode: 'contain', },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -437,6 +438,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 16,
   },
+  serviceIcon: { width: 24, height: 24, resizeMode: 'contain', },
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -478,6 +480,7 @@ const styles = StyleSheet.create({
   ratingRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
   ratingText: { fontSize: 11.5, color: COLORS.subtext, marginLeft: 4 },
   bookmarkBtn: { padding: 4, alignSelf: 'flex-start' },
+  saveIcon: { width: 24, height: 24, resizeMode: 'contain', },
   tabBar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
