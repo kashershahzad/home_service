@@ -1,19 +1,22 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch, useSelector } from "react-redux";
 import { useBookmarks } from "../context/BookmarkContext";
+import { logout as logoutAuth } from "../store/reducer/AuthConfig";
+import { clearUserData, setUserData } from "../store/reducer/usersSlice";
 import { authApi, deleteToken, getToken } from "../utils/api";
 
 const COLORS = {
@@ -23,62 +26,69 @@ const COLORS = {
   card: "#FFFFFF",
   text: "#000000",
   subtext: "#6B6B6B",
-  border: "#F0F0F0",
+  border: "#EEEEEE",
   danger: "#FF3B30",
   dangerSoft: "#FFECEC",
-  star: "#FFB800",
 };
 
 const HIT_SLOP = { top: 14, bottom: 14, left: 14, right: 14 };
 
 const MENU_ITEMS = [
   {
+    key: "history",
+    label: "Bookings History",
+    icon: "time-outline",
+    color: "#2ECC71",
+    bg: "#E6FBEF",
+    route: "/bookings-history",
+  },
+  {
+    key: "edit",
+    label: "Edit Profile",
+    icon: "person-outline",
+    color: "#7310FF",
+    bg: "#F1E7FF",
+    route: "/edit-profile",
+  },
+  {
     key: "bookmark",
     label: "My Bookmark",
     icon: "bookmark-outline",
-    color: "#7310FF",
-    bg: "#F1E7FF",
+    color: "#FF6F91",
+    bg: "#FFE9EC",
     route: "/my-bookmark",
   },
   {
     key: "notifications",
     label: "Notifications",
     icon: "notifications-outline",
-    color: "#FF6F91",
-    bg: "#FFE9EC",
+    color: "#F5B301",
+    bg: "#FFF6DE",
     route: "/notifications",
   },
   {
     key: "offers",
     label: "Special Offers",
-    icon: "pricetag-outline",
-    color: "#F5B301",
-    bg: "#FFF6DE",
+    icon: "gift-outline",
+    color: "#8A5CF6",
+    bg: "#EFE7FF",
     route: "/special-offers",
   },
   {
-    key: "address",
-    label: "Address & Location",
-    icon: "location-outline",
-    color: "#3AAFFF",
-    bg: "#E4F6FF",
-    route: "/address-location",
-  },
-  {
-    key: "help",
-    label: "Help Center",
-    icon: "help-circle-outline",
-    color: "#2ECC71",
-    bg: "#E6FBEF",
-    onPress: "help",
+    key: "contact",
+    label: "Contact Us",
+    icon: "call-outline",
+    color: "#FF8A3D",
+    bg: "#FFF0E6",
+    route: "/contact-us",
   },
   {
     key: "privacy",
     label: "Privacy Policy",
     icon: "shield-checkmark-outline",
-    color: "#8A5CF6",
-    bg: "#EFE7FF",
-    onPress: "privacy",
+    color: "#5B6CFF",
+    bg: "#EEF0FF",
+    route: "/privacy-policy",
   },
 ];
 
@@ -105,38 +115,39 @@ function MenuRow({ item, onPress, badge }) {
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const dispatch = useDispatch();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
+  const storedUser = useSelector((state) => state.users.userData);
+  const [user, setUser] = useState(storedUser?.id ? storedUser : null);
   const { refreshForUser, bookmarkedList } = useBookmarks();
 
-  useEffect(() => {
-    let mounted = true;
-
-    const loadProfile = async () => {
-      try {
-        const token = await getToken();
-        if (!token) {
-          if (mounted) setLoading(false);
-          return;
-        }
-        const profile = await authApi.getMe(token);
-        if (!mounted) return;
-        setUser(profile?.user || profile);
-      } catch (err) {
-        console.log("Could not load profile:", err?.message || err);
-      } finally {
-        if (mounted) setLoading(false);
+  const loadProfile = useCallback(async () => {
+    try {
+      const token = await getToken();
+      if (!token) {
+        setLoading(false);
+        return;
       }
-    };
+      const profile = await authApi.getMe(token);
+      const userData = profile?.user || profile;
+      setUser(userData);
+      dispatch(setUserData(userData));
+    } catch (err) {
+      console.log("Could not load profile:", err?.message || err);
+    } finally {
+      setLoading(false);
+    }
+  }, [dispatch]);
 
-    loadProfile();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      loadProfile();
+    }, [loadProfile]),
+  );
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
       {
@@ -146,6 +157,8 @@ export default function ProfileScreen() {
           setIsLoggingOut(true);
           try {
             await deleteToken();
+            dispatch(logoutAuth());
+            dispatch(clearUserData());
             await refreshForUser();
             router.replace("/letYouIn");
           } catch (err) {
@@ -161,27 +174,11 @@ export default function ProfileScreen() {
   const handleMenuPress = (item) => {
     if (item.route) {
       router.push(item.route);
-      return;
-    }
-    if (item.onPress === "help") {
-      Alert.alert(
-        "Help Center",
-        "Need assistance? Reach us at support@homeservice.app",
-      );
-      return;
-    }
-    if (item.onPress === "privacy") {
-      Alert.alert(
-        "Privacy Policy",
-        "We protect your data and never share it without consent.",
-      );
     }
   };
 
   const displayName = user?.fullName || user?.nickname || "User";
-  const displayHandle = user?.nickname
-    ? `@${user.nickname}`
-    : user?.email || user?.phone || "";
+  const subtitle = user?.email || user?.phone || "";
   const avatarUrl = user?.profileImageUrl || null;
   const initials = displayName
     .split(" ")
@@ -206,104 +203,64 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-back" size={26} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity style={styles.headerBtn} hitSlop={HIT_SLOP}>
-          <Ionicons name="ellipsis-horizontal" size={20} color={COLORS.text} />
-        </TouchableOpacity>
+        <View style={styles.headerBtn} />
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Hero card */}
         <View style={styles.heroCard}>
-          {loading ? (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              <ActivityIndicator color={COLORS.primary} />
-            </View>
-          ) : avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-          ) : (
-            <View style={[styles.avatar, styles.avatarPlaceholder]}>
-              {initials ? (
-                <Text style={styles.initials}>{initials}</Text>
-              ) : (
-                <>
-                  <View style={styles.avatarHead} />
-                  <View style={styles.avatarBody} />
-                </>
-              )}
-            </View>
-          )}
+          <View style={styles.avatarWrap}>
+            {loading ? (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <ActivityIndicator color={COLORS.primary} />
+              </View>
+            ) : avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                {initials ? (
+                  <Text style={styles.initials}>{initials}</Text>
+                ) : (
+                  <Ionicons name="person" size={40} color="#C9A8FF" />
+                )}
+              </View>
+            )}
+            <TouchableOpacity
+              style={styles.editAvatarBtn}
+              activeOpacity={0.85}
+              onPress={() => router.push("/edit-profile")}
+            >
+              <Ionicons name="pencil" size={12} color="#fff" />
+            </TouchableOpacity>
+          </View>
 
           <Text style={styles.name} numberOfLines={1}>
             {loading ? "Loading…" : displayName}
           </Text>
-          {!!displayHandle && !loading && (
-            <Text style={styles.handle} numberOfLines={1}>
-              {displayHandle}
+          {!!subtitle && !loading ? (
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {subtitle}
             </Text>
-          )}
-
-          {(user?.email || user?.phone) && !loading ? (
-            <View style={styles.metaRow}>
-              {user?.email ? (
-                <View style={styles.metaChip}>
-                  <Feather name="mail" size={12} color={COLORS.primary} />
-                  <Text style={styles.metaText} numberOfLines={1}>
-                    {user.email}
-                  </Text>
-                </View>
-              ) : null}
-              {user?.phone ? (
-                <View style={styles.metaChip}>
-                  <Feather name="phone" size={12} color={COLORS.primary} />
-                  <Text style={styles.metaText} numberOfLines={1}>
-                    {user.phone}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
           ) : null}
+        </View>
 
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>
-                {bookmarkedList?.length ?? 0}
-              </Text>
-              <Text style={styles.statLabel}>Saved</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>0</Text>
-              <Text style={styles.statLabel}>Bookings</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>—</Text>
-              <Text style={styles.statLabel}>Reviews</Text>
-            </View>
+        {MENU_ITEMS.map((item, index) => (
+          <View key={item.key}>
+            <MenuRow
+              item={item}
+              badge={
+                item.key === "bookmark" ? bookmarkedList?.length : undefined
+              }
+              onPress={() => handleMenuPress(item)}
+            />
+            {index < MENU_ITEMS.length - 1 ? (
+              <View style={styles.menuDivider} />
+            ) : null}
           </View>
-        </View>
+        ))}
 
-        <View style={styles.menuCard}>
-          {MENU_ITEMS.map((item, index) => (
-            <View key={item.key}>
-              <MenuRow
-                item={item}
-                badge={
-                  item.key === "bookmark" ? bookmarkedList?.length : undefined
-                }
-                onPress={() => handleMenuPress(item)}
-              />
-              {index < MENU_ITEMS.length - 1 ? (
-                <View style={styles.menuDivider} />
-              ) : null}
-            </View>
-          ))}
-        </View>
-
-        {/* Logout */}
         <TouchableOpacity
           style={styles.logoutButton}
           onPress={handleLogout}
@@ -314,13 +271,11 @@ export default function ProfileScreen() {
             <ActivityIndicator color={COLORS.danger} />
           ) : (
             <>
-              <View style={styles.logoutIconWrap}>
-                <Ionicons
-                  name="log-out-outline"
-                  size={20}
-                  color={COLORS.danger}
-                />
-              </View>
+              <Ionicons
+                name="log-out-outline"
+                size={20}
+                color={COLORS.danger}
+              />
               <Text style={styles.logoutText}>Logout</Text>
             </>
           )}
@@ -343,7 +298,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: COLORS.bg,
   },
   headerBtn: {
     width: 40,
@@ -363,49 +317,47 @@ const styles = StyleSheet.create({
   heroCard: {
     backgroundColor: COLORS.card,
     borderRadius: 28,
-    paddingTop: 28,
+    paddingTop: 26,
     paddingBottom: 22,
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     alignItems: "center",
-    overflow: "hidden",
-    marginBottom: 16,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    elevation: 4,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  avatarWrap: {
+    marginBottom: 14,
   },
   avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    marginBottom: 14,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
   },
   avatarPlaceholder: {
     backgroundColor: COLORS.primarySoft,
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
   },
   initials: {
     fontFamily: "Roboto_800ExtraBold",
-    fontSize: 32,
+    fontSize: 34,
     color: COLORS.primary,
   },
-  avatarHead: {
+  editAvatarBtn: {
+    position: "absolute",
+    right: 2,
+    bottom: 2,
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#C9A8FF",
-    marginTop: 18,
-  },
-  avatarBody: {
-    width: 48,
-    height: 36,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    backgroundColor: "#C9A8FF",
-    marginTop: 6,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
   },
   name: {
     fontFamily: "Roboto_800ExtraBold",
@@ -413,77 +365,16 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 4,
   },
-  handle: {
+  subtitle: {
     fontSize: 14,
     color: COLORS.subtext,
-    marginBottom: 12,
-  },
-  metaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 8,
-    marginBottom: 18,
-  },
-  metaChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.primarySoft,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    maxWidth: "90%",
-    gap: 6,
-  },
-  metaText: {
-    fontSize: 12,
-    color: COLORS.primary,
-    fontWeight: "600",
-    maxWidth: 180,
-  },
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "stretch",
-    backgroundColor: COLORS.bg,
-    borderRadius: 18,
-    paddingVertical: 14,
-    marginTop: 4,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: "center",
-  },
-  statValue: {
-    fontFamily: "Roboto_800ExtraBold",
-    fontSize: 18,
-    color: COLORS.text,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.subtext,
-    marginTop: 2,
-  },
-  statDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: COLORS.border,
-  },
-  menuCard: {
-    backgroundColor: COLORS.card,
-    borderRadius: 22,
-    paddingVertical: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
+    marginBottom: 4,
   },
   menuRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: 4,
+    paddingVertical: 13,
   },
   menuIconWrap: {
     width: 42,
@@ -517,7 +408,7 @@ const styles = StyleSheet.create({
   menuDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: COLORS.border,
-    marginLeft: 70,
+    marginLeft: 60,
   },
   logoutButton: {
     flexDirection: "row",
@@ -526,16 +417,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.dangerSoft,
     borderRadius: 22,
     paddingVertical: 16,
-    marginTop: 28,
-    gap: 10,
-  },
-  logoutIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
+    marginTop: 22,
+    gap: 8,
   },
   logoutText: {
     color: COLORS.danger,
@@ -546,6 +429,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#B0B0B0",
     fontSize: 12,
-    marginTop: 18,
+    marginTop: 16,
   },
 });

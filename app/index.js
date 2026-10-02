@@ -1,12 +1,16 @@
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, View, Image, Animated, Easing } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useDispatch } from 'react-redux';
 import { getToken, deleteToken, authApi } from '../utils/api';
+import { setUserData, clearUserData } from '../store/reducer/usersSlice';
+import { setToken, logout as logoutAuth } from '../store/reducer/AuthConfig';
 
 const MIN_SPLASH_TIME = 2500;
 
 export default function SplashScreen() {
     const router = useRouter();
+    const dispatch = useDispatch();
     const rotation = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -30,16 +34,22 @@ export default function SplashScreen() {
                 if (token) {
                     try {
                         const data = await authApi.getMe(token);
+                        const user = data?.user || data;
 
-                        if (data.user.profileCompleted && data.user.pinSet) {
+                        dispatch(setToken(token));
+                        dispatch(setUserData(user));
+
+                        if (user.profileCompleted && user.pinSet) {
                             destination = '/home';
-                        } else if (!data.user.profileCompleted) {
+                        } else if (!user.profileCompleted) {
                             destination = '/signup'; 
-                        } else if (!data.user.pinSet) {
+                        } else if (!user.pinSet) {
                             destination = '/create-pin';
                         }
                     } catch (err) {
                         await deleteToken();
+                        dispatch(logoutAuth());
+                        dispatch(clearUserData());
                         destination = '/letYouIn';
                     }
                 }
@@ -56,7 +66,7 @@ export default function SplashScreen() {
         };
 
         checkAuthAndNavigate();
-    }, []);
+    }, [dispatch, router]);
 
     const spin = rotation.interpolate({
         inputRange: [0, 1],

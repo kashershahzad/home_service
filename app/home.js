@@ -1,27 +1,6 @@
-<<<<<<< HEAD
-import { Feather, Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { images } from '../assets/images/image';
-import { OFFERS } from '../constants/offers';
-import { useBookmarks } from '../context/BookmarkContext';
-import { authApi, getToken, serviceApi } from '../utils/api';
-
-const COLORS = {
-  primary: '#7310FF',
-  pink: '#FF6FA5',
-  bg: '#FAFAFA',
-  card: '#F5F5F5',
-  text: '#000000',
-  subtext: '#6B6B6B',
-  chipBg: '#F1E7FF',
-  star: '#FFB800',
-  lightGray: '#C3C3C3',
-=======
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -33,8 +12,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useDispatch, useSelector } from "react-redux";
+import { images } from "../assets/images/image";
 import { OFFERS } from "../constants/offers";
 import { useBookmarks } from "../context/BookmarkContext";
+import { setUserData } from "../store/reducer/usersSlice";
 import { authApi, getToken, serviceApi } from "../utils/api";
 
 const COLORS = {
@@ -46,7 +28,7 @@ const COLORS = {
   subtext: "#6B6B6B",
   chipBg: "#F1E7FF",
   star: "#FFB800",
->>>>>>> dd086a0 (code .)
+  lightGray: "#C3C3C3",
 };
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -54,73 +36,62 @@ const OFFER_CARD_WIDTH = SCREEN_WIDTH - 40;
 const OFFER_CARD_SPACING = 16;
 
 const SERVICES = [
-<<<<<<< HEAD
-  { id: '1', label: 'Cleaning', icon: images.cleaningIcon, bg: '#EFE7FF', color: '#8A5CF6' },
-  { id: '2', label: 'Repairing', icon: images.repairingIcon, bg: '#FFE9EC', color: '#FF6F91' },
-  { id: '3', label: 'Painting', icon: images.paintingIcon, bg: '#E4F6FF', color: '#3AAFFF' },
-  { id: '4', label: 'Laundry', icon: images.laundryIcon, bg: '#FFF6DE', color: '#F5B301' },
-  { id: '5', label: 'Appliance', icon: images.applianceIcon, bg: '#FFE4EC', color: '#FF6F91' },
-  { id: '6', label: 'Plumbing', icon: images.plumbingIcon, bg: '#E6FBEF', color: '#2ECC71' },
-  { id: '7', label: 'Shifting', icon: images.shiftingIcon, bg: '#E4F6FF', color: '#3AAFFF' },
-  { id: '8', label: 'More', icon: images.moreSolidIcon, bg: '#F0EEFB', color: COLORS.primary },
-=======
   {
     id: "1",
     label: "Cleaning",
-    icon: "spray-bottle",
+    icon: images.cleaningIcon,
     bg: "#EFE7FF",
     color: "#8A5CF6",
   },
   {
     id: "2",
     label: "Repairing",
-    icon: "tools",
+    icon: images.repairingIcon,
     bg: "#FFE9EC",
     color: "#FF6F91",
   },
   {
     id: "3",
     label: "Painting",
-    icon: "format-paint",
+    icon: images.paintingIcon,
     bg: "#E4F6FF",
     color: "#3AAFFF",
   },
   {
     id: "4",
     label: "Laundry",
-    icon: "washing-machine",
+    icon: images.laundryIcon,
     bg: "#FFF6DE",
     color: "#F5B301",
   },
   {
     id: "5",
     label: "Appliance",
-    icon: "fridge-outline",
+    icon: images.applianceIcon,
     bg: "#FFE4EC",
     color: "#FF6F91",
   },
   {
     id: "6",
     label: "Plumbing",
-    icon: "pipe-wrench",
+    icon: images.plumbingIcon,
     bg: "#E6FBEF",
     color: "#2ECC71",
   },
   {
     id: "7",
     label: "Shifting",
-    icon: "truck-outline",
+    icon: images.shiftingIcon,
     bg: "#E4F6FF",
     color: "#3AAFFF",
   },
   {
     id: "8",
     label: "More",
-    icon: "dots-horizontal",
+    icon: images.moreSolidIcon,
     bg: "#F0EEFB",
     color: COLORS.primary,
   },
->>>>>>> dd086a0 (code .)
 ];
 
 const HIT_SLOP = { top: 14, bottom: 14, left: 14, right: 14 };
@@ -129,9 +100,15 @@ export default function HomeScreen({ navigation }) {
   const [activeFilter, setActiveFilter] = useState("All");
   const [search, setSearch] = useState("");
   const { isBookmarked, toggleBookmark } = useBookmarks();
+  const dispatch = useDispatch();
+  const storedUser = useSelector((state) => state.users.userData);
 
-  const [userAvatar, setUserAvatar] = useState(null);
-  const [userName, setUserName] = useState("");
+  const [userAvatar, setUserAvatar] = useState(
+    storedUser?.profileImageUrl || null,
+  );
+  const [userName, setUserName] = useState(
+    storedUser?.nickname || storedUser?.fullName || "",
+  );
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [categories, setCategories] = useState(["All"]);
   const [popularData, setPopularData] = useState([]);
@@ -139,38 +116,49 @@ export default function HomeScreen({ navigation }) {
   const [activeOfferIndex, setActiveOfferIndex] = useState(0);
   const router = useRouter();
 
-  useEffect(() => {
-    let isMounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
 
-    //  ais ma profile ari hain
+      const loadProfile = async () => {
+        try {
+          const token = await getToken();
+          if (!token) return;
 
-    const loadProfile = async () => {
-      try {
-        const token = await getToken();
-        if (!token) return;
+          const profile = await authApi.getMe(token);
+          if (!isMounted) return;
 
-        const profile = await authApi.getMe(token);
-        if (!isMounted) return;
+          const userData = profile?.user || profile;
 
-        const userData = profile?.user || profile;
+          dispatch(setUserData(userData));
+          setUserAvatar(userData?.profileImageUrl || null);
+          setUserName(
+            userData?.nickname ||
+              userData?.fullName ||
+              storedUser?.nickname ||
+              storedUser?.fullName ||
+              "",
+          );
+        } catch (err) {
+          console.log("Could not load profile:", err?.message || err);
+          if (isMounted) {
+            setUserName(
+              storedUser?.nickname || storedUser?.fullName || "",
+            );
+            setUserAvatar(storedUser?.profileImageUrl || null);
+          }
+        } finally {
+          if (isMounted) setLoadingProfile(false);
+        }
+      };
 
-        setUserAvatar(userData?.profileImageUrl || null);
-        setUserName(userData?.nickname || userData?.fullName || "");
-      } catch (err) {
-        console.log("Could not load profile:", err?.message || err);
-      } finally {
-        if (isMounted) setLoadingProfile(false);
-      }
-    };
+      loadProfile();
 
-    loadProfile();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  // ais ma popular services ari hain
+      return () => {
+        isMounted = false;
+      };
+    }, [dispatch]),
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -189,7 +177,6 @@ export default function HomeScreen({ navigation }) {
     };
   }, []);
 
-  //  ais ma services ari hain filter ho ka
   useEffect(() => {
     let isMounted = true;
     const loadPopular = async () => {
@@ -243,19 +230,14 @@ export default function HomeScreen({ navigation }) {
           </View>
           <View style={styles.headerRight}>
             <TouchableOpacity
-              style={styles.iconBtn}
+              style={[styles.iconBtn, { marginTop: 3 }]}
               hitSlop={HIT_SLOP}
               onPress={() => router.push("/notifications")}
             >
-<<<<<<< HEAD
-              <Image source={images.notificationIcon} style={styles.notificationIcon} />
-=======
-              <Ionicons
-                name="notifications-outline"
-                size={26}
-                color={COLORS.text}
+              <Image
+                source={images.notificationIcon}
+                style={styles.notificationIcon}
               />
->>>>>>> dd086a0 (code .)
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.iconBtn}
@@ -283,7 +265,7 @@ export default function HomeScreen({ navigation }) {
               router.push({ pathname: "/search", params: { openFilter: "1" } })
             }
           >
-          <Image source={images.searchFilter} style={styles.searchIcon} />
+            <Image source={images.searchFilter} style={styles.searchIcon} />
           </TouchableOpacity>
         </TouchableOpacity>
 
@@ -357,15 +339,7 @@ export default function HomeScreen({ navigation }) {
               }
             >
               <View style={[styles.serviceIconWrap, { backgroundColor: s.bg }]}>
-<<<<<<< HEAD
                 <Image source={s.icon} style={styles.serviceIcon} />
-=======
-                <MaterialCommunityIcons
-                  name={s.icon}
-                  size={22}
-                  color={s.color}
-                />
->>>>>>> dd086a0 (code .)
               </View>
               <Text style={styles.serviceLabel}>{s.label}</Text>
             </TouchableOpacity>
@@ -450,18 +424,14 @@ export default function HomeScreen({ navigation }) {
                   hitSlop={HIT_SLOP}
                   onPress={() => toggleBookmark(item)}
                 >
-<<<<<<< HEAD
-              <Image source={ isBookmarked(item._id) ? images.savedIcon : images.saveIcon} style={styles.saveIcon} />
-
-=======
-                  <Ionicons
-                    name={
-                      isBookmarked(item._id) ? "bookmark" : "bookmark-outline"
+                  <Image
+                    source={
+                      isBookmarked(item._id)
+                        ? images.savedIcon
+                        : images.saveIcon
                     }
-                    size={20}
-                    color={COLORS.primary}
+                    style={styles.saveIcon}
                   />
->>>>>>> dd086a0 (code .)
                 </TouchableOpacity>
               </TouchableOpacity>
             )}
@@ -472,7 +442,11 @@ export default function HomeScreen({ navigation }) {
       {/* Bottom Tab Bar */}
       <View style={styles.tabBar}>
         <TabIcon icon="home" label="Home" active />
-        <TabIcon icon="list-outline" label="Bookings" />
+        <TabIcon
+          icon="list-outline"
+          label="Bookings"
+          onPress={() => router.push("/bookings")}
+        />
         <TabIcon icon="calendar-outline" label="Calender" />
         <TabIcon
           icon="person-outline"
@@ -556,17 +530,11 @@ const styles = StyleSheet.create({
   iconBtn: {
     width: 38,
     height: 38,
-<<<<<<< HEAD
-    alignItems: 'center',
-    justifyContent: 'center',
-=======
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: 14,
->>>>>>> dd086a0 (code .)
   },
-  notificationIcon: { width: 24, height: 24, resizeMode: 'contain', },
-  saveIcon: { width: 24, height: 24, resizeMode: 'contain', },
+  notificationIcon: { width: 24, height: 24, resizeMode: "contain" },
+  saveIcon: { width: 24, height: 24, resizeMode: "contain" },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -576,14 +544,14 @@ const styles = StyleSheet.create({
     height: 50,
     marginTop: 20,
   },
-<<<<<<< HEAD
-  searchInput: { flex: 1, fontSize: 14.5, color: COLORS.lightGray, marginLeft: 8 },
-  filterIconBtn: { paddingLeft: 10, paddingVertical: 6, },
-  searchIcon: { width: 18, height: 18, resizeMode: 'contain', },
-=======
-  searchInput: { flex: 1, fontSize: 14.5, color: COLORS.text, marginLeft: 8 },
+  searchInput: {
+    flex: 1,
+    fontSize: 14.5,
+    color: COLORS.lightGray,
+    marginLeft: 8,
+  },
   filterIconBtn: { paddingLeft: 10, paddingVertical: 6 },
->>>>>>> dd086a0 (code .)
+  searchIcon: { width: 18, height: 18, resizeMode: "contain" },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -651,7 +619,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 16,
   },
-  serviceIcon: { width: 24, height: 24, resizeMode: 'contain', },
+  serviceIcon: { width: 24, height: 24, resizeMode: "contain" },
   filterRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -711,12 +679,7 @@ const styles = StyleSheet.create({
   },
   ratingRow: { flexDirection: "row", alignItems: "center", marginTop: 6 },
   ratingText: { fontSize: 11.5, color: COLORS.subtext, marginLeft: 4 },
-<<<<<<< HEAD
-  bookmarkBtn: { padding: 4, alignSelf: 'flex-start' },
-  saveIcon: { width: 24, height: 24, resizeMode: 'contain', },
-=======
   bookmarkBtn: { padding: 4, alignSelf: "flex-start" },
->>>>>>> dd086a0 (code .)
   tabBar: {
     flexDirection: "row",
     justifyContent: "space-around",

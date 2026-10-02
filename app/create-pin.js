@@ -12,12 +12,16 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { authApi, getToken, saveToken } from '../utils/api';
+import { useDispatch } from 'react-redux';
+import { setToken } from '../store/reducer/AuthConfig';
+import { setUserData } from '../store/reducer/usersSlice';
 
 const PIN_LENGTH = 4;
 const REVEAL_DURATION = 500; 
 
 export default function CreatePinScreen() {
     const router = useRouter();
+    const dispatch = useDispatch();
     const [pin, setPin] = useState('');
     const [revealedIndex, setRevealedIndex] = useState(-1);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -71,6 +75,13 @@ export default function CreatePinScreen() {
 
             const data = await authApi.setPin(token, pin);
             await saveToken(data.token);
+            dispatch(setToken(data.token));
+
+            try {
+                const profile = await authApi.getMe(data.token);
+                const user = profile?.user || profile;
+                if (user) dispatch(setUserData(user));
+            } catch (_) {}
 
             router.push('/fingerprint');
         } catch (err) {

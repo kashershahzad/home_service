@@ -403,7 +403,20 @@ export default function ServiceDetailScreen() {
 
       {/* Sticky bottom actions */}
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.messageBtn}>
+        <TouchableOpacity
+          style={styles.messageBtn}
+          onPress={() =>
+            router.push({
+              pathname: '/message',
+              params: {
+                id: provider._id,
+                title: provider.title,
+                name: provider.name,
+                image: provider.image,
+              },
+            })
+          }
+        >
           <Text style={styles.messageBtnText}>Message</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.bookBtn} onPress={handleBookNow}>

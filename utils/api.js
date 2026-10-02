@@ -1,13 +1,7 @@
-<<<<<<< HEAD
-import * as SecureStore from 'expo-secure-store';
-export const BASE_URL = 'http://192.168.0.216:5001/api';
-=======
 import * as SecureStore from "expo-secure-store";
-// export const BASE_URL = 'https://recluse-unwashed-bakery.ngrok-free.dev/api';
->>>>>>> dd086a0 (code .)
 
-// Android emulator: use with `adb reverse tcp:5001 tcp:5001`
-export const BASE_URL = "http://192.168.0.180:5001/api";
+export const BASE_URL = "http://162.248.246.171:7000/api";
+
 
 async function request(path, { method = "GET", body, token } = {}) {
   const url = `${BASE_URL}${path}`;
@@ -51,8 +45,12 @@ export const getToken = () => SecureStore.getItemAsync("authToken");
 export const deleteToken = () => SecureStore.deleteItemAsync("authToken");
 
 export const authApi = {
-  signup: (phone) =>
-    request("/auth/signup", { method: "POST", body: { phone } }),
+  // phone string (legacy) OR full profile object { phone, fullName, ... }
+  signup: (phoneOrData) => {
+    const body =
+      typeof phoneOrData === "string" ? { phone: phoneOrData } : phoneOrData;
+    return request("/auth/signup", { method: "POST", body });
+  },
 
   completeProfile: (token, profileData) =>
     request("/auth/profile", { method: "PUT", token, body: profileData }),

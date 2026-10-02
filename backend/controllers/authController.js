@@ -4,7 +4,16 @@ const { generateTempToken, generateAuthToken } = require('../utils/generateToken
 
 const signup = async (req, res) => {
   try {
-    const { phone } = req.body;
+    const {
+      phone,
+      fullName,
+      nickname,
+      dob,
+      email,
+      address,
+      profileImageUrl,
+    } = req.body;
+
     if (!phone) {
       return res.status(400).json({ message: 'Phone number is required' });
     }
@@ -12,8 +21,21 @@ const signup = async (req, res) => {
     let user = await User.findOne({ phone });
     if (!user) {
       user = new User({ phone });
-      await user.save();
     }
+
+    if (fullName !== undefined) user.fullName = fullName;
+    if (nickname !== undefined) user.nickname = nickname;
+    if (dob !== undefined) user.dob = dob;
+    if (email) user.email = email;
+    if (address !== undefined) user.address = address;
+    if (profileImageUrl !== undefined) user.profileImageUrl = profileImageUrl;
+
+    const hasProfile =
+      !!(user.fullName && user.nickname && user.dob && user.email && user.address);
+    if (hasProfile) user.profileCompleted = true;
+
+    await user.save();
+
     const token =
       user.profileCompleted && user.pinSet
         ? generateAuthToken(user._id)
@@ -24,6 +46,7 @@ const signup = async (req, res) => {
       token,
       profileCompleted: user.profileCompleted,
       pinSet: user.pinSet,
+      user: sanitizeUser(user),
     });
   } catch (error) {
     res.status(500).json({ message: 'Signup failed', error: error.message });

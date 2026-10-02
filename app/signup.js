@@ -1,32 +1,35 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
+import { useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  PanResponder,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
-  View,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  ScrollView,
-  Image,
-  Platform,
-  KeyboardAvoidingView,
-  Keyboard,
-  Alert,
-  Linking,
-  Animated,
-  PanResponder,
-  ActivityIndicator,
-  Modal,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
-import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { CountryPicker } from 'react-native-country-codes-picker';
-import { authApi, saveToken } from '../utils/api';
-import { useBookmarks } from '../context/BookmarkContext';
+  View,
+} from "react-native";
+import { CountryPicker } from "react-native-country-codes-picker";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import { useDispatch } from "react-redux";
+import { useBookmarks } from "../context/BookmarkContext";
+import { setToken } from "../store/reducer/AuthConfig";
+import { setUserData } from "../store/reducer/usersSlice";
+import { authApi, saveToken } from "../utils/api";
 const DEFAULT_REGION = {
   latitude: 31.4504,
   longitude: 73.135,
@@ -36,6 +39,7 @@ const DEFAULT_REGION = {
 
 export default function FillProfileScreen() {
   const router = useRouter();
+  const dispatch = useDispatch();
   const { refreshForUser } = useBookmarks();
   const nicknameRef = useRef(null);
   const emailRef = useRef(null);
@@ -122,21 +126,21 @@ export default function FillProfileScreen() {
           ]).start();
         }
       },
-    })
+    }),
   ).current;
 
-  const [fullName, setFullName] = useState('');
-  const [nickname, setNickname] = useState('');
+  const [fullName, setFullName] = useState("");
+  const [nickname, setNickname] = useState("");
   const [dob, setDob] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [email, setEmail] = useState('');
-  const [address, setAddress] = useState('');
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
   const [locationCoords, setLocationCoords] = useState(null);
 
   const [showCountryPicker, setShowCountryPicker] = useState(false);
-  const [countryCode, setCountryCode] = useState('+92');
-  const [countryFlag, setCountryFlag] = useState('🇵🇰');
-  const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState("+92");
+  const [countryFlag, setCountryFlag] = useState("🇵🇰");
+  const [phone, setPhone] = useState("");
 
   // ----- Address / Map picker state -----
   const [showMapPicker, setShowMapPicker] = useState(false);
@@ -145,7 +149,7 @@ export default function FillProfileScreen() {
     latitude: DEFAULT_REGION.latitude,
     longitude: DEFAULT_REGION.longitude,
   });
-  const [previewAddress, setPreviewAddress] = useState('');
+  const [previewAddress, setPreviewAddress] = useState("");
   const [isLocating, setIsLocating] = useState(false);
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
 
@@ -155,15 +159,18 @@ export default function FillProfileScreen() {
       if (!permission.granted) {
         if (!permission.canAskAgain) {
           Alert.alert(
-            'Camera Permission Needed',
-            'Please enable camera access in Settings.',
+            "Camera Permission Needed",
+            "Please enable camera access in Settings.",
             [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: () => Linking.openSettings() },
-            ]
+              { text: "Cancel", style: "cancel" },
+              { text: "Open Settings", onPress: () => Linking.openSettings() },
+            ],
           );
         } else {
-          Alert.alert('Permission Needed', 'Camera permission was not granted.');
+          Alert.alert(
+            "Permission Needed",
+            "Camera permission was not granted.",
+          );
         }
         return;
       }
@@ -178,25 +185,29 @@ export default function FillProfileScreen() {
         setAvatar(result.assets[0].uri);
       }
     } catch (err) {
-      Alert.alert('Camera Error', String(err?.message || err));
+      Alert.alert("Camera Error", String(err?.message || err));
     }
   };
 
   const openGallery = async () => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         if (!permission.canAskAgain) {
           Alert.alert(
-            'Gallery Permission Needed',
-            'Please enable photo access in Settings.',
+            "Gallery Permission Needed",
+            "Please enable photo access in Settings.",
             [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: () => Linking.openSettings() },
-            ]
+              { text: "Cancel", style: "cancel" },
+              { text: "Open Settings", onPress: () => Linking.openSettings() },
+            ],
           );
         } else {
-          Alert.alert('Permission Needed', 'Gallery permission was not granted.');
+          Alert.alert(
+            "Permission Needed",
+            "Gallery permission was not granted.",
+          );
         }
         return;
       }
@@ -212,7 +223,7 @@ export default function FillProfileScreen() {
         setAvatar(result.assets[0].uri);
       }
     } catch (err) {
-      Alert.alert('Gallery Error', String(err?.message || err));
+      Alert.alert("Gallery Error", String(err?.message || err));
     }
   };
 
@@ -237,9 +248,9 @@ export default function FillProfileScreen() {
   };
 
   const onChangeDate = (event, selectedDate) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS === "android") {
       setShowDatePicker(false);
-      if (event.type === 'set' && selectedDate) {
+      if (event.type === "set" && selectedDate) {
         setDob(selectedDate);
         emailRef.current?.focus();
       }
@@ -249,9 +260,9 @@ export default function FillProfileScreen() {
   };
 
   const formatDate = (date) => {
-    if (!date) return '';
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
+    if (!date) return "";
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
     const yyyy = date.getFullYear();
     return `${mm}/${dd}/${yyyy}`;
   };
@@ -263,7 +274,10 @@ export default function FillProfileScreen() {
   const reverseGeocode = async (latitude, longitude) => {
     setIsReverseGeocoding(true);
     try {
-      const results = await Location.reverseGeocodeAsync({ latitude, longitude });
+      const results = await Location.reverseGeocodeAsync({
+        latitude,
+        longitude,
+      });
       if (results && results.length > 0) {
         const place = results[0];
         const parts = [
@@ -275,7 +289,7 @@ export default function FillProfileScreen() {
           place.country,
         ].filter(Boolean);
         const unique = parts.filter((p, i) => parts.indexOf(p) === i);
-        setPreviewAddress(unique.join(', '));
+        setPreviewAddress(unique.join(", "));
       } else {
         setPreviewAddress(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
       }
@@ -320,12 +334,12 @@ export default function FillProfileScreen() {
         }
         if (!permission.canAskAgain) {
           Alert.alert(
-            'Location Permission Needed',
-            'Please enable location access in Settings to use current location.',
+            "Location Permission Needed",
+            "Please enable location access in Settings to use current location.",
             [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: () => Linking.openSettings() },
-            ]
+              { text: "Cancel", style: "cancel" },
+              { text: "Open Settings", onPress: () => Linking.openSettings() },
+            ],
           );
         }
         return;
@@ -341,7 +355,10 @@ export default function FillProfileScreen() {
         longitudeDelta: 0.02,
       };
       setMapRegion(region);
-      setMarkerCoordinate({ latitude: region.latitude, longitude: region.longitude });
+      setMarkerCoordinate({
+        latitude: region.latitude,
+        longitude: region.longitude,
+      });
       mapRef.current?.animateToRegion(region, 400);
       reverseGeocode(region.latitude, region.longitude);
     } catch (err) {
@@ -353,7 +370,7 @@ export default function FillProfileScreen() {
         });
         reverseGeocode(fallbackRegion.latitude, fallbackRegion.longitude);
       }
-      Alert.alert('Location Error', 'Could not get your current location.');
+      Alert.alert("Location Error", "Could not get your current location.");
     } finally {
       setIsLocating(false);
     }
@@ -390,22 +407,40 @@ export default function FillProfileScreen() {
     setIsSubmitting(true);
     try {
       const fullPhoneNumber = `${countryCode}${phone}`;
+
+      // 1) Signup — backend only saves phone
       const signupData = await authApi.signup(fullPhoneNumber);
       await saveToken(signupData.token);
-      await authApi.completeProfile(signupData.token, {
+      dispatch(setToken(signupData.token));
+
+      // 2) Profile — rest of form data via PUT /auth/profile
+      const profileBody = {
         fullName,
         nickname,
-        dob,
+        dob: dob ? dob.toISOString() : null,
         email,
         address,
         latitude: locationCoords?.latitude ?? null,
         longitude: locationCoords?.longitude ?? null,
         profileImageUrl: avatar,
-      });
+      };
+      console.log(
+        "[signup.js] profile body:",
+        JSON.stringify(profileBody, null, 2),
+      );
+
+      const saved = await authApi.completeProfile(
+        signupData.token,
+        profileBody,
+      );
+      if (saved?.user) {
+        dispatch(setUserData(saved.user));
+      }
+
       await refreshForUser();
-      router.push('/create-pin');
+      router.push("/create-pin");
     } catch (err) {
-      Alert.alert('Could not create account', err.message);
+      Alert.alert("Could not create account", err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -414,7 +449,7 @@ export default function FillProfileScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -423,7 +458,10 @@ export default function FillProfileScreen() {
         scrollEnabled={!showDatePicker}
       >
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
             <Ionicons name="chevron-back" size={26} color="#000" />
           </TouchableOpacity>
           <Text style={styles.title}>Fill Your Profile</Text>
@@ -475,9 +513,13 @@ export default function FillProfileScreen() {
           activeOpacity={0.7}
         >
           <Text style={dob ? styles.inputRowText : styles.placeholderText}>
-            {dob ? formatDate(dob) : 'Date of Birth'}
+            {dob ? formatDate(dob) : "Date of Birth"}
           </Text>
-          <Ionicons name="calendar-outline" size={22} color={dob ? '#000' : '#6B6B6B'} />
+          <Ionicons
+            name="calendar-outline"
+            size={22}
+            color={dob ? "#000" : "#6B6B6B"}
+          />
         </TouchableOpacity>
 
         {showDatePicker && (
@@ -485,12 +527,12 @@ export default function FillProfileScreen() {
             <DateTimePicker
               value={dob || new Date(2000, 0, 1)}
               mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              display={Platform.OS === "ios" ? "spinner" : "default"}
               maximumDate={new Date()}
               onChange={onChangeDate}
               themeVariant="light"
             />
-            {Platform.OS === 'ios' && (
+            {Platform.OS === "ios" && (
               <TouchableOpacity
                 style={styles.datePickerDoneButton}
                 onPress={() => {
@@ -517,7 +559,11 @@ export default function FillProfileScreen() {
             returnKeyType="next"
             onSubmitEditing={() => phoneRef.current?.focus()}
           />
-          <Ionicons name="mail-outline" size={22} color={email ? '#000' : '#6B6B6B'} />
+          <Ionicons
+            name="mail-outline"
+            size={22}
+            color={email ? "#000" : "#6B6B6B"}
+          />
         </View>
 
         <View style={styles.inputRow}>
@@ -526,7 +572,12 @@ export default function FillProfileScreen() {
             onPress={() => setShowCountryPicker(true)}
           >
             <Text style={styles.flagText}>{countryFlag}</Text>
-            <Ionicons name="chevron-down" size={14} color="#6B6B6B" style={{ marginLeft: 4 }} />
+            <Ionicons
+              name="chevron-down"
+              size={14}
+              color="#6B6B6B"
+              style={{ marginLeft: 4 }}
+            />
           </TouchableOpacity>
           <View style={styles.divider} />
           <TextInput
@@ -534,8 +585,10 @@ export default function FillProfileScreen() {
             style={styles.inputRowInput}
             placeholder="Phone Number"
             placeholderTextColor="#9A9A9A"
-            value={phone ? `${countryCode} ${phone}` : ''}
-            onChangeText={(text) => setPhone(text.replace(countryCode, '').trim())}
+            value={phone ? `${countryCode} ${phone}` : ""}
+            onChangeText={(text) =>
+              setPhone(text.replace(countryCode, "").trim())
+            }
             keyboardType="phone-pad"
             returnKeyType="next"
             onSubmitEditing={() => addressRef.current?.focus()}
@@ -555,17 +608,23 @@ export default function FillProfileScreen() {
             returnKeyType="done"
             onSubmitEditing={() => Keyboard.dismiss()}
           />
-          <TouchableOpacity onPress={openMapPicker} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity
+            onPress={openMapPicker}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Ionicons
-              name={locationCoords ? 'location' : 'location-outline'}
+              name={locationCoords ? "location" : "location-outline"}
               size={22}
-              color={locationCoords ? '#7310FF' : address ? '#000' : '#6B6B6B'}
+              color={locationCoords ? "#7310FF" : address ? "#000" : "#6B6B6B"}
             />
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity
-          style={[styles.primaryButton, !isFormValid && styles.primaryButtonDisabled]}
+          style={[
+            styles.primaryButton,
+            !isFormValid && styles.primaryButtonDisabled,
+          ]}
           onPress={handleContinue}
           disabled={!isFormValid || isSubmitting}
         >
@@ -580,7 +639,9 @@ export default function FillProfileScreen() {
       {showPhotoOptions && (
         <View style={styles.sheetOverlay} pointerEvents="box-none">
           <TouchableWithoutFeedback onPress={closeSheet}>
-            <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]} />
+            <Animated.View
+              style={[styles.backdrop, { opacity: backdropOpacity }]}
+            />
           </TouchableWithoutFeedback>
 
           <Animated.View
@@ -623,10 +684,14 @@ export default function FillProfileScreen() {
                 onPress={handleRemovePhoto}
                 activeOpacity={0.7}
               >
-                <View style={[styles.sheetOptionIcon, styles.sheetOptionIconDanger]}>
+                <View
+                  style={[styles.sheetOptionIcon, styles.sheetOptionIconDanger]}
+                >
                   <Ionicons name="trash-outline" size={22} color="#FF3B30" />
                 </View>
-                <Text style={[styles.sheetOptionText, styles.sheetOptionTextDanger]}>
+                <Text
+                  style={[styles.sheetOptionText, styles.sheetOptionTextDanger]}
+                >
                   Remove Photo
                 </Text>
               </TouchableOpacity>
@@ -708,18 +773,21 @@ export default function FillProfileScreen() {
             {isReverseGeocoding ? (
               <View style={styles.mapAddressLoadingRow}>
                 <ActivityIndicator size="small" color="#7310FF" />
-                <Text style={styles.mapAddressLoadingText}>Finding address…</Text>
+                <Text style={styles.mapAddressLoadingText}>
+                  Finding address…
+                </Text>
               </View>
             ) : (
               <Text style={styles.mapAddressText} numberOfLines={2}>
-                {previewAddress || 'Move the map to drop a pin'}
+                {previewAddress || "Move the map to drop a pin"}
               </Text>
             )}
 
             <TouchableOpacity
               style={[
                 styles.primaryButton,
-                (!previewAddress || isReverseGeocoding) && styles.primaryButtonDisabled,
+                (!previewAddress || isReverseGeocoding) &&
+                  styles.primaryButtonDisabled,
               ]}
               onPress={confirmMapLocation}
               disabled={!previewAddress || isReverseGeocoding}
@@ -734,88 +802,254 @@ export default function FillProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   scrollContent: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
+  headerRow: { flexDirection: "row", alignItems: "center", marginBottom: 25 },
   backButton: { marginRight: 12 },
-  title: { fontFamily: 'Roboto_800ExtraBold', fontSize: 28, fontWeight: '800', color: '#000000' },
-  avatarWrapper: { alignItems: 'center', marginBottom: 30 },
-  avatarContainer: { width: 110, height: 110, position: 'relative' },
-  avatarPlaceholder: { width: 110, height: 110, borderRadius: 55, backgroundColor: '#EDEDED', alignItems: 'center', justifyContent: 'flex-start', overflow: 'hidden' },
-  avatarHead: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#B0B0B0', marginTop: 22 },
-  avatarBody: { width: 82, height: 60, borderRadius: 41, backgroundColor: '#B0B0B0', marginTop: 8 },
+  title: {
+    fontFamily: "Roboto_800ExtraBold",
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#000000",
+  },
+  avatarWrapper: { alignItems: "center", marginBottom: 30 },
+  avatarContainer: { width: 110, height: 110, position: "relative" },
+  avatarPlaceholder: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: "#EDEDED",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    overflow: "hidden",
+  },
+  avatarHead: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#B0B0B0",
+    marginTop: 22,
+  },
+  avatarBody: {
+    width: 82,
+    height: 60,
+    borderRadius: 41,
+    backgroundColor: "#B0B0B0",
+    marginTop: 8,
+  },
   avatarImage: { width: 110, height: 110, borderRadius: 55 },
-  editBadge: { position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, borderRadius: 14, backgroundColor: '#7310FF', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
-  input: { backgroundColor: '#F5F5F5', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 18, fontSize: 15, color: '#000', marginBottom: 20 },
-  inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 4, marginBottom: 20 },
-  inputRowText: { flex: 1, fontSize: 15, color: '#000', paddingVertical: 14 },
-  placeholderText: { flex: 1, fontSize: 15, color: '#9A9A9A', paddingVertical: 14 },
-  inputRowInput: { flex: 1, fontSize: 15, color: '#000', paddingVertical: 14 },
-  countrySelector: { flexDirection: 'row', alignItems: 'center', paddingRight: 8 },
+  editBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#7310FF",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  input: {
+    backgroundColor: "#F5F5F5",
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    fontSize: 15,
+    color: "#000",
+    marginBottom: 20,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    marginBottom: 20,
+  },
+  inputRowText: { flex: 1, fontSize: 15, color: "#000", paddingVertical: 14 },
+  placeholderText: {
+    flex: 1,
+    fontSize: 15,
+    color: "#9A9A9A",
+    paddingVertical: 14,
+  },
+  inputRowInput: { flex: 1, fontSize: 15, color: "#000", paddingVertical: 14 },
+  countrySelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingRight: 8,
+  },
   flagText: { fontSize: 18 },
-  divider: { width: 1, height: 20, backgroundColor: '#D8D8D8', marginRight: 10 },
-  primaryButton: { backgroundColor: '#7310FF', borderRadius: 30, paddingVertical: 16, alignItems: 'center', marginTop: 30 },
-  primaryButtonDisabled: { backgroundColor: '#C9A8FF' },
-  primaryButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  datePickerDoneButton: { alignSelf: 'flex-end', paddingHorizontal: 16, paddingVertical: 8, marginBottom: 10 },
-  datePickerDoneText: { color: '#7310FF', fontWeight: '600', fontSize: 16 },
-  sheetOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'flex-end', zIndex: 999 },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
-  sheetContainer: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 30 },
-  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 16 },
-  sheetTitle: { fontSize: 17, fontWeight: '700', color: '#000', textAlign: 'center', marginBottom: 18 },
-  sheetOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
-  sheetOptionIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#F1E7FF', alignItems: 'center', justifyContent: 'center', marginRight: 14 },
-  sheetOptionText: { flex: 1, fontSize: 15, color: '#000', fontWeight: '500' },
-  sheetOptionIconDanger: { backgroundColor: '#FFEAEA' },
-  sheetOptionTextDanger: { color: '#FF3B30' },
-  sheetCancelButton: { marginTop: 16, paddingVertical: 14, borderRadius: 30, backgroundColor: '#F5F5F5', alignItems: 'center' },
-  sheetCancelText: { fontSize: 15, fontWeight: '600', color: '#000' },
-  mapContainer: { flex: 1, backgroundColor: '#fff' },
-  centerPinWrapper: {position: 'absolute',top: '50%',left: '50%',marginLeft: -20,marginTop: -40,alignItems: 'center',},
-  centerPinShadow: {width: 8,height: 4,borderRadius: 4,backgroundColor: 'rgba(0,0,0,0.25)',marginTop: -2,},
-  mapBackButton: {position: 'absolute',top: 55,left: 20,width: 40,height: 40,borderRadius: 20,backgroundColor: '#fff',alignItems: 'center',justifyContent: 'center',
+  divider: {
+    width: 1,
+    height: 20,
+    backgroundColor: "#D8D8D8",
+    marginRight: 10,
+  },
+  primaryButton: {
+    backgroundColor: "#7310FF",
+    borderRadius: 30,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginTop: 30,
+  },
+  primaryButtonDisabled: { backgroundColor: "#C9A8FF" },
+  primaryButtonText: { color: "#fff", fontWeight: "600", fontSize: 16 },
+  datePickerDoneButton: {
+    alignSelf: "flex-end",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginBottom: 10,
+  },
+  datePickerDoneText: { color: "#7310FF", fontWeight: "600", fontSize: 16 },
+  sheetOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "flex-end",
+    zIndex: 999,
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  sheetContainer: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 30,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#E0E0E0",
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#000",
+    textAlign: "center",
+    marginBottom: 18,
+  },
+  sheetOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  sheetOptionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#F1E7FF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+  },
+  sheetOptionText: { flex: 1, fontSize: 15, color: "#000", fontWeight: "500" },
+  sheetOptionIconDanger: { backgroundColor: "#FFEAEA" },
+  sheetOptionTextDanger: { color: "#FF3B30" },
+  sheetCancelButton: {
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 30,
+    backgroundColor: "#F5F5F5",
+    alignItems: "center",
+  },
+  sheetCancelText: { fontSize: 15, fontWeight: "600", color: "#000" },
+  mapContainer: { flex: 1, backgroundColor: "#fff" },
+  centerPinWrapper: {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    marginLeft: -20,
+    marginTop: -40,
+    alignItems: "center",
+  },
+  centerPinShadow: {
+    width: 8,
+    height: 4,
+    borderRadius: 4,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    marginTop: -2,
+  },
+  mapBackButton: {
+    position: "absolute",
+    top: 55,
+    left: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
   },
   mapCurrentLocationButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 55,
     right: 20,
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
   },
   mapBottomCard: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 34,
     elevation: 10,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: -2 },
   },
-  mapAddressLabel: { fontSize: 12, fontWeight: '600', color: '#9A9A9A', marginBottom: 6, textTransform: 'uppercase' },
-  mapAddressText: { fontSize: 15, color: '#000', fontWeight: '500', minHeight: 40 },
-  mapAddressLoadingRow: { flexDirection: 'row', alignItems: 'center', minHeight: 40 },
-  mapAddressLoadingText: { marginLeft: 8, fontSize: 14, color: '#6B6B6B' },
+  mapAddressLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#9A9A9A",
+    marginBottom: 6,
+    textTransform: "uppercase",
+  },
+  mapAddressText: {
+    fontSize: 15,
+    color: "#000",
+    fontWeight: "500",
+    minHeight: 40,
+  },
+  mapAddressLoadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 40,
+  },
+  mapAddressLoadingText: { marginLeft: 8, fontSize: 14, color: "#6B6B6B" },
 });

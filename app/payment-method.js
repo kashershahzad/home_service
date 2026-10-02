@@ -14,11 +14,11 @@ import { images } from '../assets/images/image';
 
 // Figma display sizes (1x); PNG assets are exported @3x
 const METHODS = [
-  { id: 'paypal', icon: images.paypalIcon, width: 23, height: 27 },
-  { id: 'google', icon: images.googlePayIcon, width: 27, height: 27 },
-  { id: 'apple', icon: images.applePayIcon, width: 23, height: 27 },
-  { id: 'mastercard', icon: images.mastercardIcon, width: 31, height: 24 },
-  { id: 'cash', icon: images.cashIcon, width: 28, height: 28 },
+  { id: 'paypal', label: 'PayPal', icon: images.paypalIcon, width: 23, height: 27 },
+  { id: 'google', label: 'Google Pay', icon: images.googlePayIcon, width: 27, height: 27 },
+  { id: 'apple', label: 'Apple Pay', icon: images.applePayIcon, width: 23, height: 27 },
+  { id: 'mastercard', label: '•••• •••• •••• 4679', icon: images.mastercardIcon, width: 31, height: 24 },
+  { id: 'cash', label: 'Cash', icon: images.cashIcon, width: 28, height: 28 },
 ];
 
 function RadioCircle({ selected }) {
@@ -39,7 +39,9 @@ function PaymentCard({ item, selected, onPress }) {
           resizeMode="contain"
         />
       </View>
-      <View style={styles.cardSpacer} />
+      <Text style={styles.cardLabel} numberOfLines={1}>
+        {item.label}
+      </Text>
       <RadioCircle selected={selected} />
     </TouchableOpacity>
   );
@@ -47,12 +49,18 @@ function PaymentCard({ item, selected, onPress }) {
 
 export default function PaymentMethodScreen() {
   const router = useRouter();
-  useLocalSearchParams();
+  const params = useLocalSearchParams();
   const [selectedId, setSelectedId] = useState('mastercard');
 
   const handleContinue = () => {
     if (!selectedId) return;
-    // Design-only — next screen not wired yet
+    router.push({
+      pathname: '/review-summary',
+      params: {
+        ...params,
+        paymentMethod: selectedId,
+      },
+    });
   };
 
   return (
@@ -143,9 +151,13 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 14,
   },
-  cardSpacer: {
+  cardLabel: {
     flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
   },
   radioOuter: {
     width: 23,

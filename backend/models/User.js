@@ -13,7 +13,8 @@ const userSchema = new mongoose.Schema(
     fullName: { type: String, trim: true },
     nickname: { type: String, trim: true },
     dob: { type: Date },
-    email: { type: String, trim: true, lowercase: true },
+    // sparse: multiple users without email won't collide on unique index
+    email: { type: String, trim: true, lowercase: true, unique: true, sparse: true },
     address: { type: String, trim: true },
     profileImageUrl: { type: String, default: null },
 

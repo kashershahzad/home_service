@@ -14,10 +14,15 @@ import {
     View,
 } from 'react-native';
 import { CountryPicker } from 'react-native-country-codes-picker';
-import { authApi, saveToken } from '../utils/api';
+import { useDispatch } from 'react-redux';
 import { useBookmarks } from '../context/BookmarkContext';
+import { setToken } from '../store/reducer/AuthConfig';
+import { setUserData } from '../store/reducer/usersSlice';
+import { authApi, getToken, saveToken } from '../utils/api';
+
 export default function SignupScreen() {
     const router = useRouter();
+    const dispatch = useDispatch();
     const { refreshForUser } = useBookmarks();
     const [phone, setPhone] = useState('');
     const [showPicker, setShowPicker] = useState(false);
@@ -60,6 +65,14 @@ export default function SignupScreen() {
         try {
             const data = await authApi.signup(fullNumber);
             await saveToken(data.token);
+            dispatch(setToken(data.token));
+
+            const token = data.token || (await getToken());
+            try {
+                const profile = await authApi.getMe(token);
+                const user = profile?.user || profile;
+                if (user) dispatch(setUserData(user));
+            } catch (_) {}
 
             if (data.profileCompleted) {
                  await refreshForUser(); 
