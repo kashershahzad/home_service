@@ -491,7 +491,7 @@ export default function ServiceDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FFFFFF' },
+  screen: { flex: 1, backgroundColor: '#F6FAF8' },
   centerScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30 },
   errorText: { color: COLORS.subtext, marginBottom: 12, textAlign: 'center' },
   retryBtn: {

@@ -201,7 +201,7 @@ export default function SignupScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 30 },
+    container: { flex: 1, backgroundColor: '#F6FAF8', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 30 },
     backButton: { marginBottom: 30 },
     title: { fontFamily: 'Roboto_800ExtraBold', fontSize: 45, color: '#000000', marginBottom: 40 },
     label: { fontSize: 14, color: '#000000', marginBottom: 12 },

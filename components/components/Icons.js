@@ -1,71 +1,70 @@
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import SimpleLineIcons from 'react-native-vector-icons/SimpleLineIcons';
-import FontAwesome5Pro from 'react-native-vector-icons/FontAwesome5Pro';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import Foundation from 'react-native-vector-icons/Foundation';
-import EvilIcons from 'react-native-vector-icons/EvilIcons';
-import AntDesign from 'react-native-vector-icons/AntDesign';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import Fontisto from 'react-native-vector-icons/Fontisto';
-import Octicons from 'react-native-vector-icons/Octicons';
-import Feather from 'react-native-vector-icons/Feather';
-import Zocial from 'react-native-vector-icons/Zocial';
-import Entypo from 'react-native-vector-icons/Entypo';
-import React from 'react';
+import {
+  AntDesign,
+  Entypo,
+  EvilIcons,
+  Feather,
+  FontAwesome,
+  FontAwesome5,
+  FontAwesome6,
+  Fontisto,
+  Foundation,
+  Ionicons,
+  MaterialCommunityIcons,
+  MaterialIcons,
+  Octicons,
+  SimpleLineIcons,
+  Zocial,
+} from "@expo/vector-icons";
+import React from "react";
 
-const Icons = ({family, name, color, size, ...props}) => {
+const Icons = ({ family, name, color, size, ...props }) => {
   let Family;
   switch (family) {
-    case 'AntDesign':
+    case "AntDesign":
       Family = AntDesign;
       break;
-    case 'Entypo':
+    case "Entypo":
       Family = Entypo;
       break;
-    case 'EvilIcons':
+    case "EvilIcons":
       Family = EvilIcons;
       break;
-    case 'Feather':
+    case "Feather":
       Family = Feather;
       break;
-    case 'FontAwesome':
+    case "FontAwesome":
       Family = FontAwesome;
       break;
-    case 'FontAwesome5':
+    case "FontAwesome5":
+    case "FontAwesome5Pro":
       Family = FontAwesome5;
       break;
-    case 'FontAwesome6':
+    case "FontAwesome6":
       Family = FontAwesome6;
       break;
-    case 'Fontisto':
+    case "Fontisto":
       Family = Fontisto;
       break;
-    case 'Foundation':
+    case "Foundation":
       Family = Foundation;
       break;
-    case 'Ionicons':
+    case "Ionicons":
       Family = Ionicons;
       break;
-    case 'MaterialCommunityIcons':
+    case "MaterialCommunityIcons":
       Family = MaterialCommunityIcons;
       break;
-    case 'MaterialIcons':
+    case "MaterialIcons":
       Family = MaterialIcons;
       break;
-    case 'Octicons':
+    case "Octicons":
       Family = Octicons;
       break;
-    case 'SimpleLineIcons':
+    case "SimpleLineIcons":
       Family = SimpleLineIcons;
       break;
-    case 'Zocial':
+    case "Zocial":
       Family = Zocial;
-      break;
-    case 'FontAwesome5Pro':
-      Family = FontAwesome5Pro;
       break;
     default:
       Family = Ionicons;
@@ -73,11 +72,12 @@ const Icons = ({family, name, color, size, ...props}) => {
 
   return (
     <Family
-      name={name || 'help-outline'}
-      color={color || '#000'}
+      name={name || "help-outline"}
+      color={color || "#000"}
       size={size || 14}
       {...props}
     />
   );
 };
+
 export default Icons;

@@ -139,7 +139,7 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F6FAF8',
   },
   header: {
     flexDirection: 'row',

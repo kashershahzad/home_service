@@ -802,7 +802,7 @@ export default function FillProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: "#F6FAF8" },
   scrollContent: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 },
   headerRow: { flexDirection: "row", alignItems: "center", marginBottom: 25 },
   backButton: { marginRight: 12 },

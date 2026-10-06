@@ -61,7 +61,7 @@ export default function AllServicesScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FFFFFF', paddingHorizontal: 20 },
+  screen: { flex: 1, backgroundColor: '#F6FAF8', paddingHorizontal: 20 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

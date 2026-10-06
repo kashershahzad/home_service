@@ -1,0 +1,18 @@
+export const COLORS = {
+  primaryColor: "#7310FF",
+  secondary: "#FFB800",
+  mainBg: "#F6FAF8",
+  bg: "#F6FAF8",
+  white: "#FFFFFF",
+  black: "#000000",
+  red: "#FF3B30",
+  green: "#34C759",
+  gray: "#9E9E9E",
+  gray2: "#6B6B6B",
+  lightGray: "#EEEEEE",
+  inputLabel: "#9E9E9E",
+  inputBg: "#F5F5F5",
+  inputBorder: "#E0E0E0",
+  authText: "#6B6B6B",
+  emptyView: "#F0F0F0",
+};

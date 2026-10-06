@@ -1,15 +1,13 @@
+import { useIsFocused } from "@react-navigation/native";
+import {
+    Dimensions,
+    Platform,
+    StatusBar,
+    StyleSheet,
+    View,
+} from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useIsFocused } from "@react-navigation/native";
-import React from "react";
-import {
-  SafeAreaView,
-  Dimensions,
-  StatusBar,
-  StyleSheet,
-  View,
-  Platform,
-} from "react-native";
 
 import ImageFast from "./ImageFast";
 
@@ -40,12 +38,13 @@ const ScreenWrapper = ({
   paddingHorizontal = 16,
 }) => {
   const insets = useSafeAreaInsets();
+  const topInset = translucent ? 0 : insets.top;
   const bottomInset =
     paddingBottom !== undefined
       ? paddingBottom
       : Platform.OS === "android"
-      ? insets.bottom
-      : Math.max(insets.bottom, 10);
+        ? insets.bottom
+        : Math.max(insets.bottom, 10);
 
   const content = () => {
     return (
@@ -53,6 +52,7 @@ const ScreenWrapper = ({
         style={[
           styles.container,
           {
+            paddingTop: topInset,
             paddingBottom: bottomInset,
             backgroundColor: backgroundImage ? "transparent" : backgroundColor,
           },
@@ -63,9 +63,6 @@ const ScreenWrapper = ({
           backgroundColor={statusBarColor}
           translucent={translucent}
         />
-        {!translucent && (
-          <SafeAreaView style={(styles.container, { backgroundColor })} />
-        )}
         {headerUnScrollable()}
 
         {scrollEnabled ? (

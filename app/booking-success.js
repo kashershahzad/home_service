@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const COLORS = {
   primary: "#7310FF",
   primarySoft: "#F1E7FF",
-  bg: "#FFFFFF",
+  bg: "#F6FAF8",
   text: "#000000",
   subtext: "#6B6B6B",
 };

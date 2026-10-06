@@ -1,15 +1,18 @@
-import { Roboto_800ExtraBold, useFonts } from "@expo-google-fonts/roboto";
+import { Roboto_800ExtraBold } from "@expo-google-fonts/roboto";
 import { Asset } from "expo-asset";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
 import { View } from "react-native";
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
+import { customFonts } from "../components/assets/fonts";
 import { BookmarkProvider } from "../context/BookmarkContext";
 import { persistor, store } from "../store";
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
+    ...customFonts,
     Roboto_800ExtraBold,
   });
 
@@ -32,7 +35,7 @@ export default function RootLayout() {
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <BookmarkProvider>
-          <View style={{ flex: 1, backgroundColor: "#fff" }}>
+          <View style={{ flex: 1, backgroundColor: "#F6FAF8" }}>
             <Stack screenOptions={{ headerShown: false }} />
           </View>
         </BookmarkProvider>

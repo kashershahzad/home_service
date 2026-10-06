@@ -384,7 +384,7 @@ function DetailRow({ icon, label, value }) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FFFFFF' },
+    container: { flex: 1, backgroundColor: '#F6FAF8' },
     scrollContent: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 },
     headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
     headerLeft: { flexDirection: 'row', alignItems: 'center' },

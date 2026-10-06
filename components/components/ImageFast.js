@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import FastImage from "react-native-fast-image";
+import { Image } from "expo-image";
 import {
   TouchableOpacity,
   StyleSheet,
@@ -43,7 +43,7 @@ const ImageFast = ({
             duration: 1000,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       ).start();
     }, [animatedValue]);
 
@@ -95,24 +95,23 @@ const ImageFast = ({
             onPress={() => setIsViewModal(false)}
             style={styles.icon}
           />
-          <FastImage
+          <Image
             onLoadStart={() => setIsImageLoading(true)}
-            onLoadEnd={() => setIsImageLoading(false)}
+            onLoad={() => setIsImageLoading(false)}
             source={source}
-            resizeMode="contain"
+            contentFit="contain"
             style={{ width: width, height: height - 70 }}
           />
         </CustomModal>
       )}
-      <FastImage
+      <Image
         onLoadStart={() => setIsImageLoading(true)}
-        onLoadEnd={() => setIsImageLoading(false)}
+        onLoad={() => setIsImageLoading(false)}
         source={source}
-        resizeMode={resizeMode}
-        style={{ width: "100%", height: "100%" }}
-      >
-        <View style={styles.absoluteFill}>{children}</View>
-      </FastImage>
+        contentFit={resizeMode || "cover"}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <View style={styles.absoluteFill}>{children}</View>
       {loading || isImageLoading ? (
         <View style={styles.absoluteFill}>
           <SkeletonLoader />

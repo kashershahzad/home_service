@@ -215,7 +215,7 @@ export default function AddressLocationScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: '#F6FAF8' },
 
   headerRow: {
     position: 'absolute',

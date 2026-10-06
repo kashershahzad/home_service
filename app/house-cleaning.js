@@ -114,7 +114,7 @@ export default function HouseCleaningScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F6FAF8',
   },
   scrollContent: {
     paddingHorizontal: 24,

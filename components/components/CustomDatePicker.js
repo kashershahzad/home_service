@@ -1,5 +1,5 @@
-import { Image, StyleSheet, TouchableOpacity } from "react-native";
-import DatePicker from "react-native-date-picker";
+import { Image, Platform, StyleSheet, TouchableOpacity } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import React, { useState } from "react";
 import moment from "moment";
 
@@ -19,6 +19,24 @@ const CustomDatePicker = ({
   type = "date",
 }) => {
   const [isModal, setModal] = useState(false);
+  const mode = type === "time" ? "time" : "date";
+
+  const onChange = (event, selectedDate) => {
+    if (Platform.OS === "android") {
+      setModal(false);
+    }
+    if (event.type === "dismissed") {
+      setModal(false);
+      return;
+    }
+    if (selectedDate) {
+      setValue(selectedDate);
+    }
+    if (Platform.OS === "ios" && event.type === "set") {
+      // keep open on iOS spinner until user dismisses via backdrop press elsewhere
+    }
+  };
+
   return (
     <>
       {withLabel && (
@@ -45,12 +63,13 @@ const CustomDatePicker = ({
               : placeholder
           }
           color={value ? COLORS.black : COLORS.inputLabel}
+          removeTranslation
         />
         <Image
           source={type == "date" ? Images.calendar : Images.clock}
           style={[
             styles.rightIcon,
-            { tintColor: value?.length ? COLORS.primaryColor : "#9E9E9E" },
+            { tintColor: value ? COLORS.primaryColor : "#9E9E9E" },
           ]}
         />
       </TouchableOpacity>
@@ -61,21 +80,15 @@ const CustomDatePicker = ({
           fontFamily={fonts.semiBold}
           fontSize={10}
           marginBottom={15}
+          removeTranslation
         />
       )}
       {isModal && (
-        <DatePicker
-          modal
-          open={isModal}
-          date={value || new Date()}
-          onConfirm={(date) => {
-            setValue(date);
-            setModal(false);
-          }}
-          onCancel={() => {
-            setModal(false);
-          }}
-          mode={type}
+        <DateTimePicker
+          value={value instanceof Date ? value : new Date()}
+          mode={mode}
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={onChange}
         />
       )}
     </>

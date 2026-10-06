@@ -1,20 +1,21 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { images } from "../assets/images/image";
+import BottomTabBar from "../components/components/BottomTabBar";
 
 const COLORS = {
   primary: "#7310FF",
   primarySoft: "#F1E7FF",
-  bg: "#FAFAFA",
+  bg: "#F6FAF8",
   card: "#FFFFFF",
   text: "#000000",
   subtext: "#6B6B6B",
@@ -157,7 +158,8 @@ export default function BookingsScreen() {
           <Text style={styles.emptyText}>No bookings yet.</Text>
         ) : (
           YOUR_BOOKINGS.map((item) => {
-            const statusStyle = STATUS_STYLES[item.status] || STATUS_STYLES.Upcoming;
+            const statusStyle =
+              STATUS_STYLES[item.status] || STATUS_STYLES.Upcoming;
             return (
               <TouchableOpacity
                 key={item.id}
@@ -183,7 +185,10 @@ export default function BookingsScreen() {
                   })
                 }
               >
-                <Image source={{ uri: item.image }} style={styles.bookingImage} />
+                <Image
+                  source={{ uri: item.image }}
+                  style={styles.bookingImage}
+                />
                 <View style={styles.bookingInfo}>
                   <View style={styles.bookingTopRow}>
                     <Text style={styles.bookingTitle} numberOfLines={1}>
@@ -196,7 +201,10 @@ export default function BookingsScreen() {
                       ]}
                     >
                       <Text
-                        style={[styles.statusText, { color: statusStyle.color }]}
+                        style={[
+                          styles.statusText,
+                          { color: statusStyle.color },
+                        ]}
                       >
                         {item.status}
                       </Text>
@@ -253,41 +261,8 @@ export default function BookingsScreen() {
         </View>
       </ScrollView>
 
-      {/* Bottom Tab Bar */}
-      <View style={styles.tabBar}>
-        <TabIcon
-          icon="home-outline"
-          label="Home"
-          onPress={() => router.replace("/home")}
-        />
-        <TabIcon icon="list" label="Bookings" active />
-        <TabIcon icon="calendar-outline" label="Calender" />
-        <TabIcon
-          icon="person-outline"
-          label="Profile"
-          onPress={() => router.push("/profile")}
-        />
-      </View>
+      <BottomTabBar active="bookings" />
     </SafeAreaView>
-  );
-}
-
-function TabIcon({ icon, label, active, onPress }) {
-  return (
-    <TouchableOpacity
-      style={styles.tabItem}
-      hitSlop={HIT_SLOP}
-      onPress={onPress}
-    >
-      <Ionicons
-        name={icon}
-        size={24}
-        color={active ? COLORS.primary : COLORS.subtext}
-      />
-      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
   );
 }
 

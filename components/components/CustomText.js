@@ -4,6 +4,7 @@ import React from "react";
 
 import { COLORS } from "../utils/COLORS";
 import fonts from "../assets/fonts";
+import "../language/i18n";
 
 const CustomText = ({
   textStyle,
@@ -77,7 +78,7 @@ const CustomText = ({
           textStyle,
         ]}
       >
-        {removeTranslation ? label : t(label)}
+        {removeTranslation ? label : label ? t(String(label)) : null}
         {children}
       </Text>
     </TouchableOpacity>

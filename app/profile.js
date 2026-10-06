@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
+import BottomTabBar from "../components/components/BottomTabBar";
 import { useBookmarks } from "../context/BookmarkContext";
 import { logout as logoutAuth } from "../store/reducer/AuthConfig";
 import { clearUserData, setUserData } from "../store/reducer/usersSlice";
@@ -22,7 +23,7 @@ import { authApi, deleteToken, getToken } from "../utils/api";
 const COLORS = {
   primary: "#7310FF",
   primarySoft: "#F1E7FF",
-  bg: "#FAFAFA",
+  bg: "#F6FAF8",
   card: "#FFFFFF",
   text: "#000000",
   subtext: "#6B6B6B",
@@ -283,6 +284,7 @@ export default function ProfileScreen() {
 
         <Text style={styles.version}>HomeService v1.0.0</Text>
       </ScrollView>
+      <BottomTabBar active="profile" />
     </SafeAreaView>
   );
 }

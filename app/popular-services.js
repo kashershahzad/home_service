@@ -167,7 +167,7 @@ export default function PopularServicesScreen() {
 }
 
 const styles = StyleSheet.create({
-    screen: { flex: 1, backgroundColor: '#FAFAFA' },
+    screen: { flex: 1, backgroundColor: '#F6FAF8' },
     header: {
         flexDirection: 'row',
         alignItems: 'center',

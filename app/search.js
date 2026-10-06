@@ -305,7 +305,7 @@ export default function SearchScreen() {
     );
 }
 const styles = StyleSheet.create({
-    screen: { flex: 1, backgroundColor: '#FAFAFA' },
+    screen: { flex: 1, backgroundColor: '#F6FAF8' },
     searchRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16, },
     searchBar: {
         flex: 1,

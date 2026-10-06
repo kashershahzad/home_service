@@ -82,7 +82,7 @@ export default function OtpScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F6FAF8',
         paddingHorizontal: 24,
         paddingTop: 60,
     },
