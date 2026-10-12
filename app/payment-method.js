@@ -13,12 +13,14 @@ import {
 import { images } from '../assets/images/image';
 
 // Figma display sizes (1x); PNG assets are exported @3x
+const ACCENT = '#0E6E4C';
+
 const METHODS = [
   { id: 'paypal', label: 'PayPal', icon: images.paypalIcon, width: 23, height: 27 },
   { id: 'google', label: 'Google Pay', icon: images.googlePayIcon, width: 27, height: 27 },
   { id: 'apple', label: 'Apple Pay', icon: images.applePayIcon, width: 23, height: 27 },
   { id: 'mastercard', label: '•••• •••• •••• 4679', icon: images.mastercardIcon, width: 31, height: 24 },
-  { id: 'cash', label: 'Cash', icon: images.cashIcon, width: 28, height: 28 },
+  { id: 'cash', label: 'Cash', ionIcon: 'card', width: 28, height: 28 },
 ];
 
 function RadioCircle({ selected }) {
@@ -33,11 +35,15 @@ function PaymentCard({ item, selected, onPress }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
       <View style={styles.iconWrap}>
-        <Image
-          source={item.icon}
-          style={{ width: item.width, height: item.height }}
-          resizeMode="contain"
-        />
+        {item.ionIcon ? (
+          <Ionicons name={item.ionIcon} size={26} color={ACCENT} />
+        ) : (
+          <Image
+            source={item.icon}
+            style={{ width: item.width, height: item.height }}
+            resizeMode="contain"
+          />
+        )}
       </View>
       <Text style={styles.cardLabel} numberOfLines={1}>
         {item.label}
@@ -164,19 +170,19 @@ const styles = StyleSheet.create({
     height: 23,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#7310FF',
+    borderColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',
   },
   radioOuterSelected: {
-    borderColor: '#7310FF',
+    borderColor: ACCENT,
   },
   radioInner: {
     width: 13,
     height: 13,
     borderRadius: 7,
-    backgroundColor: '#7310FF',
+    backgroundColor: ACCENT,
   },
   footer: {
     paddingHorizontal: 18,
@@ -189,14 +195,14 @@ const styles = StyleSheet.create({
 
   },
   primaryButton: {
-    backgroundColor: '#7310FF',
+    backgroundColor: ACCENT,
     borderRadius: 40,
     height: 55,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primaryButtonDisabled: {
-    backgroundColor: '#C9A8FF',
+    backgroundColor: '#7AAF9A',
   },
   primaryButtonText: {
     color: '#fff',

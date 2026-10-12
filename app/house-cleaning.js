@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import {
   Image,
   Platform,
@@ -9,17 +9,17 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { images } from '../assets/images/image';
+} from "react-native";
+import { images } from "../assets/images/image";
 
 const ROOMS = [
-  { id: 'livingRoom', label: 'Living Room' },
-  { id: 'terrace', label: 'Terrace' },
-  { id: 'bedroom', label: 'Bedroom' },
-  { id: 'bathroom', label: 'Bathroom' },
-  { id: 'kitchen', label: 'Kitchen' },
-  { id: 'diningRoom', label: 'Dining Room' },
-  { id: 'garage', label: 'Garage' },
+  { id: "livingRoom", label: "Living Room" },
+  { id: "terrace", label: "Terrace" },
+  { id: "bedroom", label: "Bedroom" },
+  { id: "bathroom", label: "Bathroom" },
+  { id: "kitchen", label: "Kitchen" },
+  { id: "diningRoom", label: "Dining Room" },
+  { id: "garage", label: "Garage" },
 ];
 
 function RoomRow({ label, count, onDecrement, onIncrement }) {
@@ -27,12 +27,20 @@ function RoomRow({ label, count, onDecrement, onIncrement }) {
     <View style={styles.roomCard}>
       <Text style={styles.roomLabel}>{label}</Text>
       <View style={styles.stepperRow}>
-        <TouchableOpacity style={styles.stepperButton} onPress={onDecrement} activeOpacity={0.7}>
-          <Ionicons name="remove" size={18} color="#7310FF" />
+        <TouchableOpacity
+          style={styles.stepperButton}
+          onPress={onDecrement}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="remove" size={18} color="#0E6E4C" />
         </TouchableOpacity>
         <Text style={styles.stepperValue}>{count}</Text>
-        <TouchableOpacity style={styles.stepperButton} onPress={onIncrement} activeOpacity={0.7}>
-          <Ionicons name="add" size={18} color="#7310FF" />
+        <TouchableOpacity
+          style={styles.stepperButton}
+          onPress={onIncrement}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="add" size={18} color="#0E6E4C" />
         </TouchableOpacity>
       </View>
     </View>
@@ -44,7 +52,7 @@ export default function HouseCleaningScreen() {
   const params = useLocalSearchParams();
 
   const [counts, setCounts] = useState(() =>
-    Object.fromEntries(ROOMS.map((room) => [room.id, 0]))
+    Object.fromEntries(ROOMS.map((room) => [room.id, 0])),
   );
 
   const updateCount = (id, delta) => {
@@ -56,10 +64,10 @@ export default function HouseCleaningScreen() {
 
   const handleContinue = () => {
     router.push({
-      pathname: '/booking-details',
+      pathname: "/booking-details",
       params: {
         id: params?.id,
-        title: params?.title ?? 'House Cleaning',
+        title: params?.title ?? "House Cleaning",
         name: params?.name,
         price: params?.price,
         image: params?.image,
@@ -78,7 +86,9 @@ export default function HouseCleaningScreen() {
           <View style={styles.headerLeft}>
             <TouchableOpacity
               style={styles.backButton}
-              onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+              onPress={() =>
+                router.canGoBack() ? router.back() : router.replace("/")
+              }
             >
               <Ionicons name="chevron-back" size={26} color="#000" />
             </TouchableOpacity>
@@ -89,7 +99,9 @@ export default function HouseCleaningScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.subtitle}>Enter the number of items to be cleaned.</Text>
+        <Text style={styles.subtitle}>
+          Enter the number of items to be cleaned.
+        </Text>
 
         {ROOMS.map((room) => (
           <RoomRow
@@ -103,7 +115,11 @@ export default function HouseCleaningScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.primaryButton} onPress={handleContinue} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={handleContinue}
+          activeOpacity={0.85}
+        >
           <Text style={styles.primaryButtonText}>Continue</Text>
         </TouchableOpacity>
       </View>
@@ -114,7 +130,7 @@ export default function HouseCleaningScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F6FAF8',
+    backgroundColor: "#F6FAF8",
   },
   scrollContent: {
     paddingHorizontal: 24,
@@ -122,14 +138,14 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 20,
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   backButton: {
@@ -137,77 +153,77 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#000000',
+    fontWeight: "800",
+    color: "#000000",
   },
   moreIcon: {
     width: 24,
     height: 24,
-    resizeMode: 'contain',
+    resizeMode: "contain",
   },
   subtitle: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#000000',
+    fontWeight: "600",
+    color: "#000000",
     opacity: 0.7,
     marginBottom: 18,
   },
   roomCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
     borderRadius: 15,
     paddingHorizontal: 18,
     height: 68,
     marginBottom: 16,
-    boxShadow: '0px 0px 32px 0px rgba(0, 0, 0, 0.05)',
+    boxShadow: "0px 0px 32px 0px rgba(0, 0, 0, 0.05)",
   },
   roomLabel: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#000000',
+    fontWeight: "600",
+    color: "#000000",
     flex: 1,
   },
   stepperRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   stepperButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F0E7FF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#F0E7FF",
+    alignItems: "center",
+    justifyContent: "center",
   },
   stepperValue: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#000000',
+    fontWeight: "600",
+    color: "#000000",
     minWidth: 28,
-    textAlign: 'center',
+    textAlign: "center",
     marginHorizontal: 10,
   },
   footer: {
     paddingHorizontal: 18,
     paddingTop: 16,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 36,
-    backgroundColor: '#fff',
+    paddingBottom: Platform.OS === "ios" ? 28 : 36,
+    backgroundColor: "#fff",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    boxShadow: '0px 0px 22px 0px rgba(0, 0, 0, 0.10)',
+    boxShadow: "0px 0px 22px 0px rgba(0, 0, 0, 0.10)",
   },
   primaryButton: {
-    backgroundColor: '#7310FF',
+    backgroundColor: "#0E6E4C",
     borderRadius: 40,
     height: 55,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   primaryButtonText: {
-    color: '#fff',
-    fontWeight: '400',
+    color: "#fff",
+    fontWeight: "400",
     fontSize: 15,
   },
 });

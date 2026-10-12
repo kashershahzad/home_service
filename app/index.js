@@ -26,36 +26,39 @@ export default function SplashScreen() {
     const startTime = Date.now();
 
     const checkAuthAndNavigate = async () => {
-      let destination = "/landing";
+      // Temporary: open booking as initial route
+      let destination = "/booking";
 
-      try {
-        const token = await getToken();
-
-        if (token) {
-          try {
-            const data = await authApi.getMe(token);
-            const user = data?.user || data;
-
-            dispatch(setToken(token));
-            dispatch(setUserData(user));
-
-            if (user.profileCompleted && user.pinSet) {
-              destination = "/home";
-            } else if (!user.profileCompleted) {
-              destination = "/signup";
-            } else if (!user.pinSet) {
-              destination = "/create-pin";
-            }
-          } catch (err) {
-            await deleteToken();
-            dispatch(logoutAuth());
-            dispatch(clearUserData());
-            destination = "/landing";
-          }
-        }
-      } catch (err) {
-        destination = "/landing";
-      }
+      // let destination = "/landing";
+      //
+      // try {
+      //   const token = await getToken();
+      //
+      //   if (token) {
+      //     try {
+      //       const data = await authApi.getMe(token);
+      //       const user = data?.user || data;
+      //
+      //       dispatch(setToken(token));
+      //       dispatch(setUserData(user));
+      //
+      //       if (user.profileCompleted && user.pinSet) {
+      //         destination = "/home";
+      //       } else if (!user.profileCompleted) {
+      //         destination = "/signup";
+      //       } else if (!user.pinSet) {
+      //         destination = "/create-pin";
+      //       }
+      //     } catch (err) {
+      //       await deleteToken();
+      //       dispatch(logoutAuth());
+      //       dispatch(clearUserData());
+      //       destination = "/landing";
+      //     }
+      //   }
+      // } catch (err) {
+      //   destination = "/landing";
+      // }
 
       const elapsed = Date.now() - startTime;
       const remaining = Math.max(MIN_SPLASH_TIME - elapsed, 0);

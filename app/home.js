@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Dimensions,
@@ -15,6 +16,7 @@ import CustomText from "../components/components/CustomText";
 import LimitedOfferCard from "../components/components/LimitedOfferCard";
 import PopularServiceCard from "../components/components/PopularServiceCard";
 import ScreenWrapper from "../components/components/ScreenWrapper";
+import { POPULAR_SERVICES } from "../constants/popularServices";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_GAP = 12;
@@ -26,49 +28,6 @@ const CATEGORIES = [
   { id: "cleaning", label: "Cleaning", icon: images.cleaning2 },
   { id: "hair", label: "Hair & Salon", icon: images.hair },
   { id: "beauty", label: "Beauty", icon: images.flower },
-];
-
-const POPULAR_SERVICES = [
-  {
-    id: "1",
-    image: images.homecard1,
-    rating: 4.9,
-    tag: "Trending",
-    tagColor: "trending",
-    title: "Hair Dressing",
-    subtitle: "Styling & Cut at home",
-    price: "1,500",
-  },
-  {
-    id: "2",
-    image: images.homecard2,
-    rating: 4.8,
-    tag: "Popular",
-    tagColor: "popular",
-    title: "Home Cleaning",
-    subtitle: "Deep sanitizing & sweep",
-    price: "2,000",
-  },
-  {
-    id: "3",
-    image: images.homecard3,
-    rating: 5.0,
-    tag: "Top Rated",
-    tagColor: "topRated",
-    title: "Makeup & Beauty",
-    subtitle: "Party & Bridal experts",
-    price: "2,500",
-  },
-  {
-    id: "4",
-    image: images.homecard4,
-    rating: 4.9,
-    tag: "Express",
-    tagColor: "express",
-    title: "Laundry & Ironing",
-    subtitle: "Wash, fold & crisp press",
-    price: "1,200",
-  },
 ];
 
 const BOOK_AGAIN = [
@@ -84,6 +43,7 @@ const BOOK_AGAIN = [
 ];
 
 const home = () => {
+  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState("all");
 
   const renderCategory = ({ item }) => {
@@ -118,7 +78,14 @@ const home = () => {
   };
 
   const renderPopularService = ({ item }) => (
-    <PopularServiceCard item={item} style={{ width: CARD_WIDTH }} />
+    <PopularServiceCard
+      item={{
+        ...item,
+        price: Number(item.price).toLocaleString("en-PK"),
+      }}
+      style={{ width: CARD_WIDTH }}
+      onPress={() => router.push(`/service/${item.id}`)}
+    />
   );
 
   return (

@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -13,28 +13,46 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { images } from '../../assets/images/image';
-import { useBookmarks } from '../../context/BookmarkContext';
-import { BASE_URL } from '../../utils/api';
+} from "react-native";
+import { images } from "../../assets/images/image";
+import fonts from "../../components/assets/fonts";
+import { getPopularServiceById } from "../../constants/popularServices";
+import { useBookmarks } from "../../context/BookmarkContext";
+import { BASE_URL } from "../../utils/api";
+
+const toImageSource = (image) => {
+  if (!image) return null;
+  if (typeof image === "number") return image;
+  if (typeof image === "string") return { uri: image };
+  return image;
+};
+
+const toImageUri = (image) => {
+  if (!image) return "";
+  if (typeof image === "string") return image;
+  if (typeof image === "number") {
+    return Image.resolveAssetSource(image)?.uri || "";
+  }
+  return "";
+};
 const COLORS = {
-  primary: '#7310FF',
-  text: '#000000',
-  subtext: '#6B6B6B',
-  star: '#FFB800',
-  chipBg: '#F1E7FF',
+  primary: "#7310FF",
+  text: "#000000",
+  subtext: "#6B6B6B",
+  star: "#FFB800",
+  chipBg: "#F1E7FF",
 };
 
 const HIT_SLOP = { top: 14, bottom: 14, left: 14, right: 14 };
-const RATING_FILTERS = ['All', '5', '4', '3', '2', '1'];
+const RATING_FILTERS = ["All", "5", "4", "3", "2", "1"];
 
 function timeAgo(dateString) {
   const diffMs = Date.now() - new Date(dateString).getTime();
   const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (days < 1) return 'Today';
+  if (days < 1) return "Today";
   if (days < 7) return `${days} days ago`;
   const weeks = Math.floor(days / 7);
-  return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+  return `${weeks} ${weeks === 1 ? "week" : "weeks"} ago`;
 }
 
 export default function ServiceDetailScreen() {
@@ -47,7 +65,7 @@ export default function ServiceDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(false);
-  const [reviewFilter, setReviewFilter] = useState('All');
+  const [reviewFilter, setReviewFilter] = useState("All");
   const [aboutTruncated, setAboutTruncated] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(null);
 
@@ -70,11 +88,17 @@ export default function ServiceDetailScreen() {
     PanResponder.create({
       onStartShouldSetPanResponder: (evt) => {
         const touches = evt.nativeEvent.touches;
-        return touches.length === 2 || (touches.length === 1 && baseScale.current > 1);
+        return (
+          touches.length === 2 ||
+          (touches.length === 1 && baseScale.current > 1)
+        );
       },
       onMoveShouldSetPanResponder: (evt) => {
         const touches = evt.nativeEvent.touches;
-        return touches.length === 2 || (touches.length === 1 && baseScale.current > 1);
+        return (
+          touches.length === 2 ||
+          (touches.length === 1 && baseScale.current > 1)
+        );
       },
       onPanResponderGrant: (evt) => {
         const touches = evt.nativeEvent.touches;
@@ -93,8 +117,11 @@ export default function ServiceDetailScreen() {
             lastDistance.current = distance;
           } else {
             const nextScale = Math.min(
-              Math.max(baseScale.current * (distance / lastDistance.current), 1),
-              4
+              Math.max(
+                baseScale.current * (distance / lastDistance.current),
+                1,
+              ),
+              4,
             );
             pinchScale.setValue(nextScale);
           }
@@ -123,7 +150,7 @@ export default function ServiceDetailScreen() {
       onPanResponderTerminate: () => {
         lastDistance.current = null;
       },
-    })
+    }),
   ).current;
 
   const isBookmarked = provider
@@ -134,10 +161,18 @@ export default function ServiceDetailScreen() {
     try {
       setLoading(true);
       setError(null);
+
+      const localService = getPopularServiceById(id);
+      if (localService) {
+        setProvider(localService);
+        setReviews([]);
+        return;
+      }
+
       const res = await fetch(`${BASE_URL}/services/${id}`, {
-        headers: { 'ngrok-skip-browser-warning': 'true' },
+        headers: { "ngrok-skip-browser-warning": "true" },
       });
-      if (!res.ok) throw new Error('Failed to load service');
+      if (!res.ok) throw new Error("Failed to load service");
       const data = await res.json();
       setProvider(data.provider);
       setReviews(data.reviews || []);
@@ -154,27 +189,28 @@ export default function ServiceDetailScreen() {
   const handleBookNow = () => {
     if (!provider) return;
     const bookingParams = {
-      id: provider._id,
+      id: provider._id || provider.id,
       title: provider.title,
       name: provider.name,
       price: String(provider.price),
-      image: provider.image,
+      image: toImageUri(provider.image),
     };
+    const title = String(provider.title || "").toLowerCase();
+    const category = String(provider.category || "").toLowerCase();
     const isHouseCleaning =
-      String(provider.title || '')
-        .toLowerCase()
-        .includes('house cleaning') ||
-      (String(provider.category || '').toLowerCase() === 'cleaning' &&
-        String(provider.title || '').toLowerCase().includes('house'));
+      category === "cleaning" ||
+      category.includes("house cleaning") ||
+      title.includes("house cleaning") ||
+      title.includes("home cleaning");
 
     router.push({
-      pathname: isHouseCleaning ? '/house-cleaning' : '/booking-details',
+      pathname: isHouseCleaning ? "/house-cleaning" : "/booking-details",
       params: bookingParams,
     });
   };
 
   const filteredReviews =
-    reviewFilter === 'All'
+    reviewFilter === "All"
       ? reviews
       : reviews.filter((r) => String(r.rating) === reviewFilter);
 
@@ -189,7 +225,7 @@ export default function ServiceDetailScreen() {
   if (error || !provider) {
     return (
       <View style={styles.centerScreen}>
-        <Text style={styles.errorText}>{error || 'Service not found'}</Text>
+        <Text style={styles.errorText}>{error || "Service not found"}</Text>
         <TouchableOpacity onPress={fetchDetail} style={styles.retryBtn}>
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
@@ -208,7 +244,7 @@ export default function ServiceDetailScreen() {
         {/* Hero image */}
         <View style={styles.heroWrap}>
           <Image
-            source={{ uri: provider.image }}
+            source={toImageSource(provider.image)}
             style={styles.hero}
             resizeMode="cover"
             fadeDuration={200}
@@ -217,7 +253,9 @@ export default function ServiceDetailScreen() {
             <TouchableOpacity
               hitSlop={HIT_SLOP}
               style={styles.circleBtn}
-              onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+              onPress={() =>
+                router.canGoBack() ? router.back() : router.replace("/")
+              }
             >
               <Ionicons name="chevron-back" size={24} color="#fff" />
             </TouchableOpacity>
@@ -228,8 +266,14 @@ export default function ServiceDetailScreen() {
           {/* Title row */}
           <View style={styles.titleRow}>
             <Text style={styles.title}>{provider.title}</Text>
-            <TouchableOpacity hitSlop={HIT_SLOP} onPress={() => toggleBookmark(provider)}>
-              <Image source={ isBookmarked ? images.savedIcon : images.saveIcon} style={styles.saveIcon} />
+            <TouchableOpacity
+              hitSlop={HIT_SLOP}
+              onPress={() => toggleBookmark(provider)}
+            >
+              <Image
+                source={isBookmarked ? images.savedIcon : images.saveIcon}
+                style={styles.saveIcon}
+              />
             </TouchableOpacity>
           </View>
 
@@ -245,7 +289,7 @@ export default function ServiceDetailScreen() {
           </View>
 
           {/* Category + location */}
-          <View style={styles.metaRow}>
+          {/* <View style={styles.metaRow}>
             <View style={styles.categoryBadge}>
               <Text style={styles.categoryBadgeText}>{provider.category}</Text>
             </View>
@@ -257,13 +301,13 @@ export default function ServiceDetailScreen() {
                 </Text>
               </View>
             )}
-          </View>
+          </View> */}
 
           {/* Price */}
-          <View style={styles.priceRow}>
+          {/* <View style={styles.priceRow}>
             <Text style={styles.price}>Rs.{provider.price}</Text>
             <Text style={styles.priceLabel}> (Floor Price)</Text>
-          </View>
+          </View> */}
 
           {/* About me */}
           {!!provider.about && (
@@ -276,7 +320,10 @@ export default function ServiceDetailScreen() {
                   onTextLayout={(e) => {
                     if (e.nativeEvent.lines.length > 3 && !aboutTruncated) {
                       setAboutTruncated(true);
-                    } else if (e.nativeEvent.lines.length <= 3 && aboutTruncated) {
+                    } else if (
+                      e.nativeEvent.lines.length <= 3 &&
+                      aboutTruncated
+                    ) {
                       setAboutTruncated(false);
                     }
                   }}
@@ -284,12 +331,17 @@ export default function ServiceDetailScreen() {
                   {provider.about}
                 </Text>
               )}
-              <Text style={styles.aboutText} numberOfLines={expanded ? undefined : 3}>
+              <Text
+                style={styles.aboutText}
+                numberOfLines={expanded ? undefined : 3}
+              >
                 {provider.about}
               </Text>
               {aboutTruncated && (
                 <TouchableOpacity onPress={() => setExpanded((v) => !v)}>
-                  <Text style={styles.readMore}>{expanded ? 'Show less' : 'Read more...'}</Text>
+                  <Text style={styles.readMore}>
+                    {expanded ? "Show less" : "Read more..."}
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -298,9 +350,9 @@ export default function ServiceDetailScreen() {
           {/* Photos */}
           {hasPhotos && (
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Photos</Text>
+              <Text style={styles.sectionLabel}>Photos and Videos</Text>
               <View style={styles.photoGrid}>
-                {provider.photos.slice(0, 4).map((uri, idx) => {
+                {provider.photos.slice(0, 4).map((photo, idx) => {
                   const showSeeAll = idx === 1 && provider.photos.length > 4;
                   return (
                     <TouchableOpacity
@@ -310,7 +362,7 @@ export default function ServiceDetailScreen() {
                       onPress={() => setViewerIndex(idx)}
                     >
                       <Image
-                        source={{ uri }}
+                        source={toImageSource(photo)}
                         style={styles.photoThumb}
                         resizeMode="cover"
                       />
@@ -349,15 +401,19 @@ export default function ServiceDetailScreen() {
                   onPress={() => setReviewFilter(r)}
                   style={[styles.chip, active && styles.chipActive]}
                 >
-                  {r !== 'All' && (
+                  {r !== "All" && (
                     <Ionicons
                       name="star"
                       size={12}
-                      color={active ? '#fff' : COLORS.primary}
+                      color={active ? "#fff" : COLORS.primary}
                       style={{ marginRight: 4 }}
                     />
                   )}
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{r}</Text>
+                  <Text
+                    style={[styles.chipText, active && styles.chipTextActive]}
+                  >
+                    {r}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
@@ -374,23 +430,36 @@ export default function ServiceDetailScreen() {
                 {filteredReviews.map((r) => (
                   <View key={r._id} style={styles.reviewRow}>
                     <Image
-                      source={{ uri: r.avatar || 'https://via.placeholder.com/40' }}
+                      source={{
+                        uri: r.avatar || "https://via.placeholder.com/40",
+                      }}
                       style={styles.avatar}
                     />
                     <View style={{ flex: 1 }}>
                       <View style={styles.reviewHeaderRow}>
                         <Text style={styles.reviewerName}>{r.userName}</Text>
                         <View style={styles.reviewRatingBadge}>
-                          <Ionicons name="star" size={11} color={COLORS.primary} />
-                          <Text style={styles.reviewRatingText}>{r.rating}</Text>
+                          <Ionicons
+                            name="star"
+                            size={11}
+                            color={COLORS.primary}
+                          />
+                          <Text style={styles.reviewRatingText}>
+                            {r.rating}
+                          </Text>
                         </View>
                       </View>
                       <Text style={styles.reviewComment}>{r.comment}</Text>
                       <View style={styles.reviewFooterRow}>
-                        <Image source={images.heartIcon} style={styles.heartIcon} />
+                        <Image
+                          source={images.heartIcon}
+                          style={styles.heartIcon}
+                        />
                         <Text style={styles.reviewFooterText}>{r.likes}</Text>
                         <Text style={styles.reviewFooterDot}>·</Text>
-                        <Text style={styles.reviewFooterText}>{timeAgo(r.createdAt)}</Text>
+                        <Text style={styles.reviewFooterText}>
+                          {timeAgo(r.createdAt)}
+                        </Text>
                       </View>
                     </View>
                   </View>
@@ -407,9 +476,9 @@ export default function ServiceDetailScreen() {
           style={styles.messageBtn}
           onPress={() =>
             router.push({
-              pathname: '/message',
+              pathname: "/message",
               params: {
-                id: provider._id,
+                id: provider._id || provider.id,
                 title: provider.title,
                 name: provider.name,
                 image: provider.image,
@@ -443,9 +512,12 @@ export default function ServiceDetailScreen() {
           </TouchableOpacity>
 
           {viewerIndex !== null && (
-            <View style={styles.viewerImageWrap} {...pinchResponder.panHandlers}>
+            <View
+              style={styles.viewerImageWrap}
+              {...pinchResponder.panHandlers}
+            >
               <Animated.Image
-                source={{ uri: provider.photos[viewerIndex] }}
+                source={toImageSource(provider.photos[viewerIndex])}
                 style={[
                   styles.viewerImage,
                   {
@@ -467,7 +539,10 @@ export default function ServiceDetailScreen() {
                 hitSlop={HIT_SLOP}
                 style={styles.viewerNavBtn}
                 onPress={() =>
-                  setViewerIndex((i) => (i - 1 + provider.photos.length) % provider.photos.length)
+                  setViewerIndex(
+                    (i) =>
+                      (i - 1 + provider.photos.length) % provider.photos.length,
+                  )
                 }
               >
                 <Ionicons name="chevron-back" size={22} color="#fff" />
@@ -478,7 +553,9 @@ export default function ServiceDetailScreen() {
               <TouchableOpacity
                 hitSlop={HIT_SLOP}
                 style={styles.viewerNavBtn}
-                onPress={() => setViewerIndex((i) => (i + 1) % provider.photos.length)}
+                onPress={() =>
+                  setViewerIndex((i) => (i + 1) % provider.photos.length)
+                }
               >
                 <Ionicons name="chevron-forward" size={22} color="#fff" />
               </TouchableOpacity>
@@ -491,52 +568,82 @@ export default function ServiceDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F6FAF8' },
-  centerScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30 },
-  errorText: { color: COLORS.subtext, marginBottom: 12, textAlign: 'center' },
+  screen: { flex: 1, backgroundColor: "#F6FAF8" },
+  centerScreen: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 30,
+  },
+  errorText: { color: COLORS.subtext, marginBottom: 12, textAlign: "center" },
   retryBtn: {
     paddingHorizontal: 20,
     height: 42,
     borderRadius: 21,
     backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  retryText: { color: '#fff', fontWeight: '700' },
+  retryText: { color: "#fff", fontWeight: "700" },
 
   heroWrap: {
-    width: '100%',
+    width: "100%",
     height: 400,
   },
-  hero: { width: '100%', height: '100%' },
+  hero: { width: "100%", height: "100%" },
   heroTopBar: {
-    position: 'absolute',
+    position: "absolute",
     top: 55,
     left: 20,
     right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   circleBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
     // backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   body: { paddingHorizontal: 20, paddingTop: 18 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { fontSize: 25, fontWeight: '600', color: '#000', flex: 1, marginRight: 12 },
-  saveIcon: { width: 24, height: 24, resizeMode: 'contain', tintColor: COLORS.primary },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  title: {
+    fontSize: 32,
+    fontFamily: fonts.semiBold,
+    color: "#000000",
+    flex: 1,
+    marginRight: 12,
+  },
+  saveIcon: {
+    width: 24,
+    height: 24,
+    resizeMode: "contain",
+    tintColor: "#0E6E4C",
+  },
 
-  providerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-  providerName: { fontSize: 14, fontWeight: '700', color: COLORS.primary, marginRight: 10 },
-  ratingInline: { flexDirection: 'row', alignItems: 'center' },
-  ratingInlineText: { fontSize: 12.5, color: COLORS.subtext, marginLeft: 4 },
+  providerRow: { flexDirection: "row", alignItems: "center", marginTop: 8 },
+  providerName: {
+    fontSize: 18,
+    fontFamily: fonts.semiBold,
+    color: "#0E6E4C",
+    marginRight: 10,
+  },
+  ratingInline: { flexDirection: "row", alignItems: "center" },
+  ratingInlineText: {
+    fontSize: 13,
+    color: "#000000",
+    marginLeft: 4,
+    fontFamily: fonts.semiBold,
+  },
 
-  metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
+  metaRow: { flexDirection: "row", alignItems: "center", marginTop: 10 },
   categoryBadge: {
     backgroundColor: COLORS.chipBg,
     borderWidth: 1.2,
@@ -544,174 +651,227 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     height: 26,
     borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 10,
   },
-  categoryBadgeText: { fontSize: 11.5, color: COLORS.primary, fontWeight: '700' },
-  locationRow: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
-  locationText: { fontSize: 15, color: '#000', fontWeight: '600', marginLeft: 5, flexShrink: 1 },
+  categoryBadgeText: {
+    fontSize: 11.5,
+    color: COLORS.primary,
+    fontWeight: "700",
+  },
+  locationRow: { flexDirection: "row", alignItems: "center", flexShrink: 1 },
+  locationText: {
+    fontSize: 15,
+    color: "#000",
+    fontWeight: "600",
+    marginLeft: 5,
+    flexShrink: 1,
+  },
 
-  priceRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 12 },
-  price: { fontSize: 18, fontWeight: '800', color: COLORS.primary },
+  priceRow: { flexDirection: "row", alignItems: "baseline", marginTop: 12 },
+  price: { fontSize: 18, fontWeight: "800", color: COLORS.primary },
   priceLabel: { fontSize: 12.5, color: COLORS.subtext },
 
-  section: { marginTop: 22, position: 'relative' },
-  sectionLabel: { fontSize: 18, fontWeight: '600', color: '#000', marginBottom: 8 },
-  aboutText: { fontSize: 14.5, color: COLORS.subtext, lineHeight: 22 },
+  section: { marginTop: 22, position: "relative" },
+  sectionLabel: {
+    fontSize: 18,
+    fontFamily: fonts.semiBold,
+    color: "#000",
+    marginBottom: 8,
+  },
+  aboutText: {
+    fontSize: 15,
+    color: "#000000",
+    lineHeight: 22,
+    fontFamily: fonts.regular,
+  },
   aboutMeasure: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     opacity: 0,
     zIndex: -1,
   },
-  readMore: { fontSize: 13, color: COLORS.primary, fontWeight: '700', marginTop: 4 },
+  readMore: {
+    fontSize: 13,
+    color: COLORS.primary,
+    fontWeight: "700",
+    marginTop: 4,
+  },
 
-  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 },
+  photoGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -6 },
   photoItem: {
-    width: '50%',
+    width: "50%",
     padding: 6,
   },
   photoThumb: {
-    width: '100%',
+    width: "100%",
     aspectRatio: 1.15,
     borderRadius: 18,
-    backgroundColor: '#F0F0F0',
-    shadowColor: '#000',
+    backgroundColor: "#F0F0F0",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 2,
   },
   seeAllOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 14,
     right: 14,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: "rgba(0,0,0,0.55)",
     paddingHorizontal: 12,
     height: 28,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  seeAllText: { color: '#fff', fontSize: 11.5, fontWeight: '700' },
+  seeAllText: { color: "#fff", fontSize: 11.5, fontWeight: "700" },
 
-  ratingSummaryRow: { flexDirection: 'row', alignItems: 'center' },
-  ratingSummaryText: { fontSize: 18, fontWeight: '700', color: '#000', marginLeft: 6 },
+  ratingSummaryRow: { flexDirection: "row", alignItems: "center" },
+  ratingSummaryText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#000",
+    marginLeft: 6,
+  },
 
-  chipRow: { flexDirection: 'row', paddingRight: 8 },
+  chipRow: { flexDirection: "row", paddingRight: 8 },
   chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 14,
     height: 32,
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: COLORS.primary,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     marginRight: 10,
   },
   chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  chipText: { fontSize: 12, fontWeight: '600', color: COLORS.primary },
-  chipTextActive: { color: '#fff' },
+  chipText: { fontSize: 12, fontWeight: "600", color: COLORS.primary },
+  chipTextActive: { color: "#fff" },
 
-  noReviews: { color: COLORS.subtext, fontSize: 13, textAlign: 'center', marginTop: 20 },
-  reviewRow: { flexDirection: 'row', marginBottom: 20 },
+  noReviews: {
+    color: COLORS.subtext,
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: 20,
+  },
+  reviewRow: { flexDirection: "row", marginBottom: 20 },
   avatar: { width: 52, height: 52, borderRadius: 26, marginRight: 12 },
-  reviewHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  reviewerName: { fontSize: 16, fontWeight: '700', color: '#000' },
+  reviewHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  reviewerName: { fontSize: 16, fontWeight: "700", color: "#000" },
   reviewRatingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1.2,
     borderColor: COLORS.primary,
     paddingHorizontal: 8,
     height: 22,
     borderRadius: 11,
   },
-  reviewRatingText: { color: COLORS.primary, fontSize: 11, fontWeight: '700', marginLeft: 3 },
-  reviewComment: { fontSize: 12.5, color: COLORS.subtext, marginTop: 4, lineHeight: 18 },
-  reviewFooterRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
+  reviewRatingText: {
+    color: COLORS.primary,
+    fontSize: 11,
+    fontWeight: "700",
+    marginLeft: 3,
+  },
+  reviewComment: {
+    fontSize: 12.5,
+    color: COLORS.subtext,
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  reviewFooterRow: { flexDirection: "row", alignItems: "center", marginTop: 6 },
   reviewFooterText: { fontSize: 13.5, color: COLORS.subtext, marginLeft: 4 },
-  reviewFooterDot: { fontSize: 13.5, color: COLORS.subtext, marginHorizontal: 6 },
-  heartIcon: { width: 20, height: 20, resizeMode: 'contain',},
+  reviewFooterDot: {
+    fontSize: 13.5,
+    color: COLORS.subtext,
+    marginHorizontal: 6,
+  },
+  heartIcon: { width: 20, height: 20, resizeMode: "contain" },
   bottomBar: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 30,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    borderTopColor: "#F0F0F0",
   },
   messageBtn: {
     flex: 1,
     height: 52,
     borderRadius: 26,
-    backgroundColor: COLORS.chipBg,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#7310FF1A",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  messageBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 15 },
+  messageBtnText: { color: "#0E6E4C", fontFamily: fonts.regular, fontSize: 15 },
   bookBtn: {
     flex: 1,
     height: 52,
     borderRadius: 26,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#0E6E4C",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  bookBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  bookBtnText: { color: "#ffffff", fontFamily: fonts.regular, fontSize: 15 },
   viewerBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.92)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#0E6E4C",
+    alignItems: "center",
+    justifyContent: "center",
   },
   viewerCloseBtn: {
-    position: 'absolute',
+    position: "absolute",
     top: 55,
     right: 20,
     zIndex: 5,
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   viewerImageWrap: {
-    width: '100%',
-    height: Dimensions.get('window').height * 0.68,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "100%",
+    height: Dimensions.get("window").height * 0.68,
+    alignItems: "center",
+    justifyContent: "center",
   },
   viewerImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   viewerNavRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '82%',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "82%",
     marginTop: 28,
   },
   viewerNavBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  viewerCounter: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  viewerCounter: { color: "#fff", fontSize: 14, fontWeight: "600" },
 });

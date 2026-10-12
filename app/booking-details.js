@@ -226,10 +226,10 @@ export default function BookingDetailsScreen() {
                                 </Text>
                                 <View style={styles.calendarNavRow}>
                                     <TouchableOpacity onPress={goPrevMonth} style={styles.calendarNavButton}>
-                                        <Ionicons name="chevron-back" size={18} color="#7210FF" />
+                                        <Ionicons name="chevron-back" size={18} color="#0E6E4C" />
                                     </TouchableOpacity>
                                     <TouchableOpacity onPress={goNextMonth} style={styles.calendarNavButton}>
-                                        <Ionicons name="chevron-forward" size={18} color="#7210FF" />
+                                        <Ionicons name="chevron-forward" size={18} color="#0E6E4C" />
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -274,11 +274,11 @@ export default function BookingDetailsScreen() {
                                 </View>
                                 <View style={styles.stepperRow}>
                                     <TouchableOpacity style={styles.stepperButton} onPress={decrementHours}>
-                                        <Ionicons name="remove" size={18} color="#7310FF" />
+                                        <Ionicons name="remove" size={18} color="#0E6E4C" />
                                     </TouchableOpacity>
                                     <Text style={styles.stepperValue}>{workingHours}</Text>
                                     <TouchableOpacity style={styles.stepperButton} onPress={incrementHours}>
-                                        <Ionicons name="add" size={18} color="#7310FF" />
+                                        <Ionicons name="add" size={18} color="#0E6E4C" />
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    dayCircleSelected: { backgroundColor: '#7310FF', borderRadius: 140 },
+    dayCircleSelected: { backgroundColor: '#0E6E4C', borderRadius: 140 },
     dayText: { fontSize: 13, color: '#000' },
     dayTextSelected: { color: '#fff', fontWeight: '700' },
 
@@ -507,15 +507,15 @@ const styles = StyleSheet.create({
     timeSlotScroll: { marginBottom: 24 },
     timePill: {
         borderWidth: 1.5,
-        borderColor: '#7310FF',
+        borderColor: '#0E6E4C',
         borderRadius: 24,
         paddingHorizontal: 16,
         paddingVertical: 10,
         marginRight: 10,
         backgroundColor: '#fff',
     },
-    timePillActive: { backgroundColor: '#7310FF' },
-    timePillText: { fontSize: 13, fontWeight: '600', color: '#7310FF' },
+    timePillActive: { backgroundColor: '#0E6E4C' },
+    timePillText: { fontSize: 13, fontWeight: '600', color: '#0E6E4C' },
     timePillTextActive: { color: '#fff' },
 
     promoRow: {
@@ -575,11 +575,11 @@ const styles = StyleSheet.create({
         boxShadow: '0px 0px 22px 0px rgba(0, 0, 0, 0.1)',
     },
     primaryButton: {
-        backgroundColor: '#7310FF',
+        backgroundColor: '#0E6E4C',
         borderRadius: 30,
         paddingVertical: 16,
         alignItems: 'center',
     },
-    primaryButtonDisabled: { backgroundColor: '#C9A8FF' },
+    primaryButtonDisabled: { backgroundColor: '#7AAF9A' },
     primaryButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
 });
