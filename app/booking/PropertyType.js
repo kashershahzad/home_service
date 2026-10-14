@@ -77,52 +77,43 @@ export default function PropertyType({
 
   return (
     <View style={styles.container}>
-      <StepsHeader title="Property Type" onBack={onBack} step={2} total={6} />
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.heroTitle}>What are we cleaning?</Text>
-        <Text style={styles.heroSubtitle}>Select your property type.</Text>
+        <StepsHeader title="Property Type" onBack={onBack} step={2} total={6} />
 
-        <View style={styles.grid}>
-          {PROPERTIES.map((item) => (
-            <PropertyCard
-              key={item.id}
-              item={item}
-              selected={item.id === selectedId}
-              onPress={() => setSelectedId(item.id)}
-            />
-          ))}
+        <View style={styles.contentBody}>
+          <Text style={styles.heroTitle}>What are we cleaning?</Text>
+          <Text style={styles.heroSubtitle}>Select your property type.</Text>
+
+          <View style={styles.grid}>
+            {PROPERTIES.map((item) => (
+              <PropertyCard
+                key={item.id}
+                item={item}
+                selected={item.id === selectedId}
+                onPress={() => setSelectedId(item.id)}
+              />
+            ))}
+          </View>
         </View>
 
-        {/* <View style={styles.infoBox}>
-          <Ionicons name="shield-checkmark" size={18} color={ACCENT} />
-          <View style={styles.infoCopy}>
-            <Text style={styles.infoTitle}>Precision Service Matching</Text>
-            <Text style={styles.infoText}>
-              Checklists and team assignments are tailored to the architectural
-              layout of your space.
-            </Text>
-          </View>
-        </View> */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[
+              styles.continueBtn,
+              !selectedId && styles.continueBtnDisabled,
+            ]}
+            onPress={() => selectedId && onContinue?.(selectedId)}
+            disabled={!selectedId}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.continueText}>Continue</Text>
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.continueBtn,
-            !selectedId && styles.continueBtnDisabled,
-          ]}
-          onPress={() => selectedId && onContinue?.(selectedId)}
-          disabled={!selectedId}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.continueText}>Continue</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -133,9 +124,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#F6FAF8",
   },
   scrollContent: {
+    flexGrow: 1,
+    paddingBottom: Platform.OS === "ios" ? 28 : 20,
+  },
+  contentBody: {
     paddingHorizontal: 20,
     paddingTop: 18,
-    paddingBottom: 24,
   },
   heroTitle: {
     fontSize: 26,
@@ -248,12 +242,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: Platform.OS === "ios" ? 28 : 20,
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    boxShadow: "0px 0px 22px 0px rgba(0, 0, 0, 0.08)",
+    paddingTop: 24,
+    backgroundColor: "transparent",
   },
   continueBtn: {
     height: 54,

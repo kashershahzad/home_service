@@ -92,4 +92,11 @@ export const images = {
   storySingle: require("./icons/booking/single.png"),
   storyDouble: require("./icons/booking/double.png"),
   storyBasement: require("./icons/booking/basement.png"),
+  morning: require("./icons/morning.png"),
+  afternoon: require("./icons/afternoon.png"),
+  evening: require("./icons/evening.png"),
+  bookingHome: require("./icons/home.png"),
+  bookingAddOn: require("./icons/addone.png"),
+  bookingDateTime: require("./icons/datetime.png"),
+  bookingAddress: require("./icons/adress.png"),
 };

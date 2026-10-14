@@ -133,55 +133,57 @@ export default function BookCleaning({
 
   return (
     <View style={styles.container}>
-      <StepsHeader
-        title="Book Cleaning"
-        onBack={() => (router.canGoBack() ? router.back() : null)}
-        step={1}
-        total={6}
-        progressLabel="STEP 1 OF 6 • 1 Service"
-      />
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.heroTitle}>Home Cleaning</Text>
-        <Text style={styles.heroSubtitle}>
-          Choose the cleaning service that suits your needs.
-        </Text>
+        <StepsHeader
+          title="Book Cleaning"
+          onBack={() => (router.canGoBack() ? router.back() : null)}
+          step={1}
+          total={6}
+          progressLabel="STEP 1 OF 6 • 1 Service"
+        />
 
-        {SERVICES.map((item) => (
-          <ServiceCard
-            key={item.id}
-            item={item}
-            selected={item.id === selectedId}
-            onPress={() => setSelectedId(item.id)}
-          />
-        ))}
-
-        <View style={styles.infoBox}>
-          <Ionicons name="shield-checkmark" size={18} color={ACCENT} />
-          <Text style={styles.infoText}>
-            All cleans include 100% Satisfaction Guarantee and vetted
-            background-checked specialists.
+        <View style={styles.contentBody}>
+          <Text style={styles.heroTitle}>Home Cleaning</Text>
+          <Text style={styles.heroSubtitle}>
+            Choose the cleaning service that suits your needs.
           </Text>
+
+          {SERVICES.map((item) => (
+            <ServiceCard
+              key={item.id}
+              item={item}
+              selected={item.id === selectedId}
+              onPress={() => setSelectedId(item.id)}
+            />
+          ))}
+
+          <View style={styles.infoBox}>
+            <Ionicons name="shield-checkmark" size={18} color={ACCENT} />
+            <Text style={styles.infoText}>
+              All cleans include 100% Satisfaction Guarantee and vetted
+              background-checked specialists.
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[
+              styles.continueBtn,
+              !selectedId && styles.continueBtnDisabled,
+            ]}
+            onPress={handleContinue}
+            disabled={!selectedId}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.continueText}>Continue</Text>
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
+          </TouchableOpacity>
         </View>
       </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.continueBtn,
-            !selectedId && styles.continueBtnDisabled,
-          ]}
-          onPress={handleContinue}
-          disabled={!selectedId}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.continueText}>Continue</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -192,9 +194,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#F6FAF8",
   },
   scrollContent: {
+    flexGrow: 1,
+    paddingBottom: Platform.OS === "ios" ? 28 : 20,
+  },
+  contentBody: {
     paddingHorizontal: 20,
     paddingTop: 18,
-    paddingBottom: 24,
   },
   heroTitle: {
     fontSize: 28,
@@ -372,12 +377,8 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: Platform.OS === "ios" ? 28 : 20,
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    boxShadow: "0px 0px 22px 0px rgba(0, 0, 0, 0.08)",
+    paddingTop: 24,
+    backgroundColor: "transparent",
   },
   continueBtn: {
     height: 54,
