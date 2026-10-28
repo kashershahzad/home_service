@@ -24,7 +24,7 @@ import {
   View,
 } from "react-native";
 import { CountryPicker } from "react-native-country-codes-picker";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import { MapView, Marker, PROVIDER_GOOGLE } from "../components/Map";
 import { useDispatch } from "react-redux";
 import { useBookmarks } from "../context/BookmarkContext";
 import { setToken } from "../store/reducer/AuthConfig";

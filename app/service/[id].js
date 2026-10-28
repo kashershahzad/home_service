@@ -200,11 +200,25 @@ export default function ServiceDetailScreen() {
     const isHouseCleaning =
       category === "cleaning" ||
       category.includes("house cleaning") ||
+      category.includes("cleaning") ||
       title.includes("house cleaning") ||
       title.includes("home cleaning");
+    const isHairDressing =
+      category.includes("hair") ||
+      category.includes("salon") ||
+      title.includes("hair") ||
+      title.includes("dressing") ||
+      title.includes("salon");
+
+    let pathname = "/booking-details";
+    if (isHairDressing) {
+      pathname = "/booking/bookHaircutService";
+    } else if (isHouseCleaning) {
+      pathname = "/booking/propertyBooking";
+    }
 
     router.push({
-      pathname: isHouseCleaning ? "/house-cleaning" : "/booking-details",
+      pathname,
       params: bookingParams,
     });
   };

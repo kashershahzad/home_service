@@ -2,9 +2,6 @@ import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Animated, Easing, Image, StyleSheet, View } from "react-native";
 import { useDispatch } from "react-redux";
-import { logout as logoutAuth, setToken } from "../store/reducer/AuthConfig";
-import { clearUserData, setUserData } from "../store/reducer/usersSlice";
-import { authApi, deleteToken, getToken } from "../utils/api";
 
 const MIN_SPLASH_TIME = 2500;
 
@@ -26,22 +23,18 @@ export default function SplashScreen() {
     const startTime = Date.now();
 
     const checkAuthAndNavigate = async () => {
-      // Temporary: open booking as initial route
-      let destination = "/booking";
+      let destination = "/home";
 
+      // Auth flow (re-enable later if needed):
       // let destination = "/landing";
-      //
       // try {
       //   const token = await getToken();
-      //
       //   if (token) {
       //     try {
       //       const data = await authApi.getMe(token);
       //       const user = data?.user || data;
-      //
       //       dispatch(setToken(token));
       //       dispatch(setUserData(user));
-      //
       //       if (user.profileCompleted && user.pinSet) {
       //         destination = "/home";
       //       } else if (!user.profileCompleted) {

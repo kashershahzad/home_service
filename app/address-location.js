@@ -12,7 +12,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import MapView, { PROVIDER_GOOGLE, Marker } from 'react-native-maps';
+import { MapView, Marker, PROVIDER_GOOGLE } from '../components/Map';
 
 const DEFAULT_REGION = {
   latitude: 31.4504,
