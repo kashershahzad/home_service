@@ -1,14 +1,8 @@
 import { useRouter } from "expo-router";
-import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { images } from "../../../../assets/images/image";
 import fonts from "../../../../components/assets/fonts";
+import CustomButton from "../../../../components/components/CustomButton";
 import CustomText from "../../../../components/components/CustomText";
 import Icons from "../../../../components/components/Icons";
 import ScreenWrapper from "../../../../components/components/ScreenWrapper";
@@ -49,7 +43,7 @@ export default function TrackBooking({
   schedule,
   bookingId = "HC8427391",
   onBack,
-  onViewDetails,
+  onNext,
 }) {
   const router = useRouter();
   const plan = PLANS[serviceId] || PLANS.standard;
@@ -89,18 +83,16 @@ export default function TrackBooking({
       )}
       footerUnScrollable={() => (
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={styles.detailsButton}
-            onPress={onViewDetails}
-            activeOpacity={0.85}
-          >
-            <Image
-              source={images.bookings}
-              style={styles.detailsIcon}
-              resizeMode="contain"
-            />
-            <Text style={styles.detailsButtonText}>View Booking Details</Text>
-          </TouchableOpacity>
+          <CustomButton
+            title="Next"
+            onPress={onNext}
+            backgroundColor={ACCENT}
+            color="#FFFFFF"
+            height={54}
+            borderRadius={12}
+            fontSize={16}
+            fontFamily={fonts.semiBold}
+          />
           <Text style={styles.supportText}>
             Need to make changes?{" "}
             <Text
@@ -445,28 +437,8 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
   },
-  detailsButton: {
-    height: 54,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: ACCENT,
-    backgroundColor: "#FFFFFF",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  detailsIcon: {
-    width: 18,
-    height: 18,
-  },
-  detailsButtonText: {
-    fontSize: 15,
-    fontFamily: fonts.semiBold,
-    color: ACCENT,
-  },
   supportText: {
-    marginTop: 16,
+    marginTop: 14,
     textAlign: "center",
     fontSize: 13,
     lineHeight: 18,

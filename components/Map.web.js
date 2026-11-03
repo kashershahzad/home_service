@@ -4,12 +4,20 @@ export const PROVIDER_GOOGLE = "google";
 
 export function MapView({ children, style, ...rest }) {
   return (
-    <View style={[{ flex: 1, backgroundColor: "#E8EEF0" }, style]} {...rest}>
+    <View style={[{ flex: 1, backgroundColor: "#EDE8F5" }, style]} {...rest}>
       {children}
     </View>
   );
 }
 
 export function Marker() {
+  return null;
+}
+
+export function Polyline() {
+  return null;
+}
+
+export function UrlTile() {
   return null;
 }

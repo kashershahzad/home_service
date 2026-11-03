@@ -1,6 +1,7 @@
 import { useState } from "react";
 import BookCleaning from "./BookCleaning";
 import ConfirmedBooking from "./confirmedBooking/ConfirmedBooking";
+import LiveTracking from "./confirmedBooking/LiveTracking";
 import TrackBooking from "./confirmedBooking/TrackBooking";
 import ExtrasCondition from "./ExtrasCondition";
 import PropertyDetails from "./PropertyDetails";
@@ -21,6 +22,15 @@ export default function BookingLayout() {
   const [schedule, setSchedule] = useState(null);
   const [bookingId, setBookingId] = useState("HC8427391");
 
+  if (step === 9) {
+    return (
+      <LiveTracking
+        schedule={schedule}
+        onBack={() => setStep(8)}
+      />
+    );
+  }
+
   if (step === 8) {
     return (
       <TrackBooking
@@ -28,7 +38,7 @@ export default function BookingLayout() {
         schedule={schedule}
         bookingId={bookingId}
         onBack={() => setStep(7)}
-        onViewDetails={() => setStep(6)}
+        onNext={() => setStep(9)}
       />
     );
   }
@@ -40,7 +50,6 @@ export default function BookingLayout() {
         schedule={schedule}
         bookingId={bookingId}
         onBack={() => setStep(6)}
-        onViewSummary={() => setStep(6)}
         onTrack={() => setStep(8)}
       />
     );

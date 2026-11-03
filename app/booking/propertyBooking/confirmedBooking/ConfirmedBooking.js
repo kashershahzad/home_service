@@ -88,7 +88,6 @@ export default function ConfirmedBooking({
   schedule,
   bookingId = "HC8427391",
   onBack,
-  onViewSummary,
   onTrack,
 }) {
   const [copied, setCopied] = useState(false);
@@ -159,16 +158,6 @@ export default function ConfirmedBooking({
             borderRadius={12}
             fontSize={16}
             fontFamily={fonts.regular}
-          />
-          <CustomText
-            label="View Booking Summary"
-            color={"#0E6E4C"}
-            fontFamily={fonts.semiBold}
-            fontSize={14}
-            textAlign="center"
-            alignSelf="center"
-            marginTop={16}
-            onPress={onViewSummary}
           />
         </View>
       )}
