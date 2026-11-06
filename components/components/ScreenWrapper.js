@@ -1,4 +1,5 @@
-import { useIsFocused } from "@react-navigation/native";
+import { NavigationContext } from "@react-navigation/native";
+import React from "react";
 import {
     Dimensions,
     Platform,
@@ -15,11 +16,39 @@ import { COLORS } from "../utils/COLORS";
 
 const { width, height } = Dimensions.get("window");
 
-const FocusAwareStatusBar = (props) => {
-  const isFocused = useIsFocused();
-  return isFocused ? (
-    <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} {...props} />
-  ) : null;
+const useIsFocusedSafe = () => {
+  const navigation = React.useContext(NavigationContext);
+  const [isFocused, setIsFocused] = React.useState(
+    () => navigation?.isFocused?.() ?? true,
+  );
+
+  React.useEffect(() => {
+    if (!navigation) {
+      setIsFocused(true);
+      return;
+    }
+
+    setIsFocused(navigation.isFocused());
+
+    const unsubscribeFocus = navigation.addListener("focus", () => {
+      setIsFocused(true);
+    });
+    const unsubscribeBlur = navigation.addListener("blur", () => {
+      setIsFocused(false);
+    });
+
+    return () => {
+      unsubscribeFocus();
+      unsubscribeBlur();
+    };
+  }, [navigation]);
+
+  return isFocused;
+};
+
+const FocusAwareStatusBar = ({ backgroundColor: _backgroundColor, translucent: _translucent, ...props }) => {
+  const isFocused = useIsFocusedSafe();
+  return isFocused ? <StatusBar barStyle="dark-content" {...props} /> : null;
 };
 
 const ScreenWrapper = ({
@@ -58,11 +87,7 @@ const ScreenWrapper = ({
           },
         ]}
       >
-        <FocusAwareStatusBar
-          barStyle={barStyle}
-          backgroundColor={statusBarColor}
-          translucent={translucent}
-        />
+        <FocusAwareStatusBar barStyle={barStyle} />
         {headerUnScrollable()}
 
         {scrollEnabled ? (

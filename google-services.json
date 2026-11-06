@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "875306308108",
+    "project_id": "homely-566b9",
+    "storage_bucket": "homely-566b9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:875306308108:android:c4bb8f8cfcc6d9bf27d429",
+        "android_client_info": {
+          "package_name": "pk.com.homely.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsZCz-XfNIx1KRVgRlECUiO2iIe8773hE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

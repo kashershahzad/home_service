@@ -1,56 +1,39 @@
 import { useState } from "react";
 import BookCleaning from "./BookCleaning";
-import ConfirmedBooking from "./confirmedBooking/ConfirmedBooking";
-import LiveTracking from "./confirmedBooking/LiveTracking";
-import TrackBooking from "./confirmedBooking/TrackBooking";
+import MatchingStatus from "./confirmedBooking/MatchingStatus";
+import {
+  BOOKING_TYPES,
+} from "./confirmedBooking/serviceConfigs";
 import ExtrasCondition from "./ExtrasCondition";
 import PropertyDetails from "./PropertyDetails";
 import PropertyType from "./PropertyType";
 import ReviewBooking from "./ReviewBooking";
 import ScheduleAddress from "./ScheduleAddress";
 
-function createBookingId() {
-  return `HC${Math.floor(1000000 + Math.random() * 9000000)}`;
+function createBookingId(bookingType) {
+  const prefix = bookingType === BOOKING_TYPES.HAIR_DRYER ? "HS" : "HC";
+  return `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
 export default function BookingLayout() {
-  const [step, setStep] = useState(7);
+  // Switch: "houseCleaning" | "hairDryer"
+  const [bookingType, setBookingType] = useState(BOOKING_TYPES.HOUSE_CLEANING);
+
+  const [step, setStep] = useState(1);
   const [serviceId, setServiceId] = useState("deep");
   const [propertyId, setPropertyId] = useState("flat");
   const [propertyDetails, setPropertyDetails] = useState(null);
   const [extrasData, setExtrasData] = useState(null);
   const [schedule, setSchedule] = useState(null);
-  const [bookingId, setBookingId] = useState("HC8427391");
-
-  if (step === 9) {
-    return (
-      <LiveTracking
-        schedule={schedule}
-        onBack={() => setStep(8)}
-      />
-    );
-  }
-
-  if (step === 8) {
-    return (
-      <TrackBooking
-        serviceId={serviceId}
-        schedule={schedule}
-        bookingId={bookingId}
-        onBack={() => setStep(7)}
-        onNext={() => setStep(9)}
-      />
-    );
-  }
+  const [bookingId, setBookingId] = useState("HC-8492");
 
   if (step === 7) {
     return (
-      <ConfirmedBooking
-        serviceId={serviceId}
-        schedule={schedule}
+      <MatchingStatus
+        bookingType={bookingType}
         bookingId={bookingId}
+        schedule={schedule}
         onBack={() => setStep(6)}
-        onTrack={() => setStep(8)}
       />
     );
   }
@@ -65,7 +48,7 @@ export default function BookingLayout() {
         onBack={() => setStep(5)}
         onEditSchedule={() => setStep(5)}
         onConfirm={() => {
-          setBookingId((current) => current || createBookingId());
+          setBookingId((current) => current || createBookingId(bookingType));
           setStep(7);
         }}
       />
@@ -131,6 +114,9 @@ export default function BookingLayout() {
       initialServiceId={serviceId}
       onContinue={(id) => {
         setServiceId(id);
+        // House cleaning flow. For hair dryer UI use:
+        // setBookingType(BOOKING_TYPES.HAIR_DRYER)
+        setBookingType(BOOKING_TYPES.HOUSE_CLEANING);
         setStep(2);
       }}
     />

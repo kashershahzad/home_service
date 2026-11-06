@@ -42,7 +42,8 @@
           "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
         }
       },
-      "package": "com.kasher255.HomeServiceApp"
+      "package": "pk.com.homely.app",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",

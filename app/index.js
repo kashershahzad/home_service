@@ -23,7 +23,7 @@ export default function SplashScreen() {
     const startTime = Date.now();
 
     const checkAuthAndNavigate = async () => {
-      let destination = "/booking/propertyBooking";
+      let destination = "/home";
 
       // Auth flow (re-enable later if needed):
       // let destination = "/landing";

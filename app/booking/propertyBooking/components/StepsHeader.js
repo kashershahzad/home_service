@@ -28,7 +28,7 @@ export default function StepsHeader({
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
       <View style={[styles.headerWrap, { paddingTop: insets.top }]}>
         <View style={styles.headerRow}>
           <TouchableOpacity

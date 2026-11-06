@@ -1,4 +1,4 @@
-package com.kasher255.HomeServiceApp
+package pk.com.homely.app
 
 import android.app.Application
 import android.content.res.Configuration

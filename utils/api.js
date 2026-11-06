@@ -1,4 +1,4 @@
-import * as SecureStore from "expo-secure-store";
+import * as secureStorage from "./secureStorage";
 
 export const BASE_URL = "http://162.248.246.171:7000/api";
 
@@ -39,10 +39,9 @@ async function request(path, { method = "GET", body, token } = {}) {
   return data;
 }
 
-export const saveToken = (token) =>
-  SecureStore.setItemAsync("authToken", token);
-export const getToken = () => SecureStore.getItemAsync("authToken");
-export const deleteToken = () => SecureStore.deleteItemAsync("authToken");
+export const saveToken = (token) => secureStorage.setItem("authToken", token);
+export const getToken = () => secureStorage.getItem("authToken");
+export const deleteToken = () => secureStorage.deleteItem("authToken");
 
 export const authApi = {
   // phone string (legacy) OR full profile object { phone, fullName, ... }

@@ -1,4 +1,4 @@
-package com.kasher255.HomeServiceApp
+package pk.com.homely.app
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
