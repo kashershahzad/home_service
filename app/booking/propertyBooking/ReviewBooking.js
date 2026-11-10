@@ -113,8 +113,12 @@ function formatScheduleDate(schedule) {
 function AddonChip({ item }) {
   return (
     <View style={styles.chip}>
-      <Image source={item.icon} style={styles.chipIcon} resizeMode="contain" />
-      <Text style={styles.chipText}>{item.title}</Text>
+      <Image
+        source={item.icon || images.moreIcon}
+        style={styles.chipIcon}
+        resizeMode="contain"
+      />
+      <Text style={styles.chipText}>{item.shortTitle || item.title}</Text>
     </View>
   );
 }
@@ -144,8 +148,21 @@ export default function ReviewBooking({
   onBack,
   onEditSchedule,
   onConfirm,
+  hideSteps = false,
+  variant = "cleaning",
+  packageInfo,
+  quotePricing,
+  confirming = false,
+  confirmError = null,
+  step = 6,
+  totalSteps = 6,
 }) {
+  const isPackage = variant === "package";
+
   const selectedExtras = useMemo(() => {
+    if (Array.isArray(extrasData?.extrasItems) && extrasData.extrasItems.length) {
+      return extrasData.extrasItems;
+    }
     const ids = extrasData?.extras || [];
     return EXTRAS_CATALOG.filter((item) => ids.includes(item.id));
   }, [extrasData]);
@@ -155,18 +172,66 @@ export default function ReviewBooking({
     [propertyDetails],
   );
 
+  const packageSummary = useMemo(() => {
+    if (!isPackage) return null;
+    return {
+      title: packageInfo?.title || "Hair package",
+      subtitle:
+        packageInfo?.subtitle ||
+        packageInfo?.duration ||
+        (packageInfo?.category === "children"
+          ? "Children's hair dressing"
+          : "Men's hair dressing"),
+      icon: packageInfo?.icon || images.scissors,
+    };
+  }, [isPackage, packageInfo]);
+
   const cleaningPrice = SERVICE_PRICES[serviceId] || SERVICE_PRICES.deep;
-  const addOnsTotal = selectedExtras.reduce((sum, item) => sum + item.price, 0);
-  const total = cleaningPrice + addOnsTotal + SERVICE_FEE;
+  const localAddOnsTotal = selectedExtras.reduce(
+    (sum, item) => sum + (Number(item.price) || 0),
+    0,
+  );
+
+  const serviceAmount =
+    quotePricing?.serviceAmount != null
+      ? Number(quotePricing.serviceAmount)
+      : isPackage
+        ? Number(packageInfo?.priceRaw || 0)
+        : cleaningPrice;
+  const addOnsTotal =
+    quotePricing?.addOnsAmount != null
+      ? Number(quotePricing.addOnsAmount)
+      : localAddOnsTotal;
+  const serviceFee =
+    quotePricing?.serviceFeeAndTaxes != null
+      ? Number(quotePricing.serviceFeeAndTaxes)
+      : SERVICE_FEE;
+  const travelFee = Number(quotePricing?.travelFee || 0);
+  const discountAmount = Number(quotePricing?.discountAmount || 0);
+  const total =
+    quotePricing?.total != null
+      ? Number(quotePricing.total)
+      : serviceAmount + addOnsTotal - discountAmount + serviceFee + travelFee;
 
   const addOnsLabel =
     selectedExtras.length > 0
-      ? `Add-ons (${selectedExtras.map((e) => e.shortTitle).join(", ")})`
+      ? `Add-ons (${selectedExtras.map((e) => e.shortTitle || e.title).join(", ")})`
       : "Add-ons";
 
+  const durationHint = isPackage
+    ? packageInfo?.duration
+      ? ` (Est. ${packageInfo.duration})`
+      : ""
+    : " (Estimated 4.5 hrs)";
   const timeLine = schedule?.displayTime
-    ? `${schedule.displayTime} (Estimated 4.5 hrs)`
+    ? `${schedule.displayTime}${durationHint}`
     : "Time not selected";
+
+  const primary = isPackage ? packageSummary : property;
+  const primaryLabel = isPackage ? "PACKAGE" : "PROPERTY";
+  const servicePriceLabel = isPackage
+    ? packageInfo?.title || "Hair dressing"
+    : "Cleaning service";
 
   return (
     <View style={styles.container}>
@@ -177,9 +242,10 @@ export default function ReviewBooking({
         <StepsHeader
           title="Review Booking"
           onBack={onBack}
-          step={6}
-          total={6}
+          step={step}
+          total={totalSteps}
           progressRight="Review"
+          hideSteps={hideSteps}
         />
 
         <View style={styles.contentBody}>
@@ -190,11 +256,11 @@ export default function ReviewBooking({
 
           <View style={styles.summaryCard}>
             <SummaryRow
-              icon={property.icon || images.bookingHome}
-              label="PROPERTY"
+              icon={primary?.icon || images.bookingHome}
+              label={primaryLabel}
             >
-              <Text style={styles.rowTitle}>{property.title}</Text>
-              <Text style={styles.rowSubtitle}>{property.subtitle}</Text>
+              <Text style={styles.rowTitle}>{primary?.title}</Text>
+              <Text style={styles.rowSubtitle}>{primary?.subtitle}</Text>
             </SummaryRow>
 
             <SummaryRow icon={images.bookingAddOn} label="ADD-ONS">
@@ -239,9 +305,9 @@ export default function ReviewBooking({
             <Text style={styles.priceTitle}>Price details</Text>
 
             <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Cleaning service</Text>
+              <Text style={styles.priceLabel}>{servicePriceLabel}</Text>
               <Text style={styles.priceValue}>
-                {formatCurrency(cleaningPrice)}
+                {formatCurrency(serviceAmount)}
               </Text>
             </View>
 
@@ -251,6 +317,24 @@ export default function ReviewBooking({
                 {formatCurrency(addOnsTotal)}
               </Text>
             </View>
+
+            {travelFee > 0 ? (
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>Travel fee</Text>
+                <Text style={styles.priceValue}>
+                  {formatCurrency(travelFee)}
+                </Text>
+              </View>
+            ) : null}
+
+            {discountAmount > 0 ? (
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>Discount</Text>
+                <Text style={styles.priceValue}>
+                  -{formatCurrency(discountAmount)}
+                </Text>
+              </View>
+            ) : null}
 
             <View style={styles.priceRow}>
               <View style={styles.feeLabelRow}>
@@ -262,7 +346,7 @@ export default function ReviewBooking({
                 />
               </View>
               <Text style={styles.priceValue}>
-                {formatCurrency(SERVICE_FEE)}
+                {formatCurrency(serviceFee)}
               </Text>
             </View>
 
@@ -276,16 +360,25 @@ export default function ReviewBooking({
               <Text style={styles.totalValue}>{formatCurrency(total)}</Text>
             </View>
           </View>
+
+          {confirmError ? (
+            <Text style={styles.errorText}>{confirmError}</Text>
+          ) : null}
         </View>
 
         <View style={styles.footer}>
           <TouchableOpacity
-            style={styles.continueBtn}
+            style={[styles.continueBtn, confirming && styles.continueBtnDisabled]}
             onPress={onConfirm}
             activeOpacity={0.85}
+            disabled={confirming}
           >
-            <Text style={styles.continueText}>Confirm & Book</Text>
-            <Ionicons name="arrow-forward" size={18} color="#fff" />
+            <Text style={styles.continueText}>
+              {confirming ? "Booking..." : "Confirm & Book"}
+            </Text>
+            {!confirming ? (
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            ) : null}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -470,6 +563,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     color: "#3E4945",
   },
+  errorText: {
+    marginTop: 12,
+    fontSize: 13,
+    fontFamily: fonts.medium,
+    color: "#B91C1C",
+  },
 
   footer: {
     paddingHorizontal: 20,
@@ -484,6 +583,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+  },
+  continueBtnDisabled: {
+    opacity: 0.55,
   },
   continueText: { color: "#fff", fontSize: 16, fontFamily: fonts.bold },
 });

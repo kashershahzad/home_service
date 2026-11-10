@@ -1,10 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { isValidPhoneNumber } from 'libphonenumber-js/min';
 import { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
     Keyboard,
     StyleSheet,
     Text,
@@ -14,23 +11,15 @@ import {
     View,
 } from 'react-native';
 import { CountryPicker } from 'react-native-country-codes-picker';
-import { useDispatch } from 'react-redux';
-import { useBookmarks } from '../context/BookmarkContext';
-import { setToken } from '../store/reducer/AuthConfig';
-import { setUserData } from '../store/reducer/usersSlice';
-import { authApi, getToken, saveToken } from '../utils/api';
+import { buildE164Phone } from '../utils/phone';
 
-export default function SignupScreen() {
+export default function SignInNumberScreen() {
     const router = useRouter();
-    const dispatch = useDispatch();
-    const { refreshForUser } = useBookmarks();
     const [phone, setPhone] = useState('');
     const [showPicker, setShowPicker] = useState(false);
     const [countryCode, setCountryCode] = useState('+92');
     const [countryFlag, setCountryFlag] = useState('🇵🇰');
-    const [isoCode, setIsoCode] = useState('PK');
     const [error, setError] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handlePhoneChange = (text) => {
         if (/^[0-9]*$/.test(text)) {
@@ -40,51 +29,19 @@ export default function SignupScreen() {
         }
         if (error) setError('');
     };
-    const validatePhone = () => {
-        if (!phone) {
+
+    const handleContinue = () => {
+        Keyboard.dismiss();
+        if (!phone.trim()) {
             setError('Phone number is required');
-            return false;
-        }
-        const fullNumber = countryCode + phone;
-        const valid = isValidPhoneNumber(fullNumber, isoCode);
-        if (!valid) {
-            setError(`Enter a valid ${isoCode} phone number`);
-            return false;
+            return;
         }
         setError('');
-        return true;
-    };
-
-    const handleSignup = async () => {
-        Keyboard.dismiss();
-        if (!validatePhone()) return;
-
-        const fullNumber = countryCode + phone;
-        setIsSubmitting(true);
-
-        try {
-            const data = await authApi.signup(fullNumber);
-            await saveToken(data.token);
-            dispatch(setToken(data.token));
-
-            const token = data.token || (await getToken());
-            try {
-                const profile = await authApi.getMe(token);
-                const user = profile?.user || profile;
-                if (user) dispatch(setUserData(user));
-            } catch (_) {}
-
-            if (data.profileCompleted) {
-                 await refreshForUser(); 
-                router.replace('/otp');
-            } else {
-                Alert.alert('Account Not Found', 'Please check your phone number and try again.');
-            }
-        } catch (err) {
-            Alert.alert('Signup failed', err.message);
-        } finally {
-            setIsSubmitting(false);
-        }
+        const fullNumber = buildE164Phone(countryCode, phone);
+        router.push({
+            pathname: '/login-pin',
+            params: { phone: fullNumber },
+        });
     };
 
     return (
@@ -121,11 +78,7 @@ export default function SignupScreen() {
                         returnKeyType="done"
                         value={phone}
                         onChangeText={handlePhoneChange}
-                        onSubmitEditing={() => {
-                            Keyboard.dismiss();
-                            validatePhone();
-                        }}
-                        onBlur={validatePhone}
+                        onSubmitEditing={Keyboard.dismiss}
                     />
                 </View>
 
@@ -137,7 +90,6 @@ export default function SignupScreen() {
                         Keyboard.dismiss();
                         setCountryCode(item.dial_code);
                         setCountryFlag(item.flag);
-                        setIsoCode(item.code);
                         setShowPicker(false);
                         setPhone('');
                         setError('');
@@ -177,16 +129,8 @@ export default function SignupScreen() {
                     keyboardShouldPersistTaps="handled"
                 />
 
-                <TouchableOpacity
-                    style={styles.primaryButton}
-                    onPress={handleSignup}
-                    disabled={isSubmitting}
-                >
-                    {isSubmitting ? (
-                        <ActivityIndicator color="#fff" />
-                    ) : (
-                        <Text style={styles.primaryButtonText}>Continue</Text>
-                    )}
+                <TouchableOpacity style={styles.primaryButton} onPress={handleContinue}>
+                    <Text style={styles.primaryButtonText}>Continue</Text>
                 </TouchableOpacity>
 
                 <View style={styles.footerRow}>
@@ -201,20 +145,51 @@ export default function SignupScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F6FAF8', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 30 },
+    container: {
+        flex: 1,
+        backgroundColor: '#F6FAF8',
+        paddingHorizontal: 24,
+        paddingTop: 60,
+        paddingBottom: 30,
+    },
     backButton: { marginBottom: 30 },
-    title: { fontFamily: 'Roboto_800ExtraBold', fontSize: 45, color: '#000000', marginBottom: 40 },
+    title: {
+        fontFamily: 'Roboto_800ExtraBold',
+        fontSize: 45,
+        color: '#000000',
+        marginBottom: 40,
+    },
     label: { fontSize: 14, color: '#000000', marginBottom: 12 },
-    phoneInputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F4F4F4', borderWidth: 1, borderColor: '#F4F4F4', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 14 },
+    phoneInputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F4F4F4',
+        borderWidth: 1,
+        borderColor: '#F4F4F4',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 14,
+    },
     phoneInputWrapperError: { borderColor: '#FF3B30' },
     flagSection: { flexDirection: 'row', alignItems: 'center', marginRight: 8 },
     flag: { fontSize: 18, marginRight: 4 },
     countryCode: { fontSize: 15, color: '#000', marginRight: 8 },
     phoneInput: { flex: 1, fontSize: 15, color: '#000' },
     errorText: { color: '#FF3B30', fontSize: 13, marginTop: 6, marginBottom: 10 },
-    primaryButton: { backgroundColor: '#7310FF', borderRadius: 30, paddingVertical: 16, alignItems: 'center', marginTop: 70 },
+    primaryButton: {
+        backgroundColor: '#7310FF',
+        borderRadius: 30,
+        paddingVertical: 16,
+        alignItems: 'center',
+        marginTop: 70,
+    },
     primaryButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-    footerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 'auto', marginBottom: 50 },
+    footerRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginTop: 'auto',
+        marginBottom: 50,
+    },
     footerText: { color: '#000' },
     footerLink: { color: '#7310FF', fontWeight: '600' },
 });

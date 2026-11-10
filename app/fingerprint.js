@@ -1,21 +1,30 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-    Animated,
-    Easing,
-    Image,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Easing,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { useDispatch, useSelector } from "react-redux";
+import { setUserData } from "../store/reducer/usersSlice";
+import { authApi, getToken } from "../utils/api";
+import {
+  clearBiometricCredentials,
+  getBiometricCapability,
+  getBiometricCredentials,
+  saveBiometricCredentials,
+} from "../utils/biometric";
 
 const PURPLE = "#7310FF";
-const PURPLE_LIGHT = "#EDE9FE";
-const TEXT_GRAY = "#6B7280";
 const DECOR_DOTS = [
   { top: -14, left: 22, size: 12, opacity: 0.9 },
   { top: 8, left: 0, size: 8, opacity: 0.6 },
@@ -31,9 +40,19 @@ const DECOR_DOTS = [
 
 export default function SetFingerprintScreen() {
   const router = useRouter();
+  const dispatch = useDispatch();
+  const { mode } = useLocalSearchParams();
+  const isUpdate = mode === "update";
+  const user = useSelector((state) => state.users.userData);
+
   const [showSuccess, setShowSuccess] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [capability, setCapability] = useState(null);
   const spinValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    getBiometricCapability().then(setCapability);
+  }, []);
 
   useEffect(() => {
     let loop;
@@ -52,85 +71,119 @@ export default function SetFingerprintScreen() {
     return () => {
       if (loop) loop.stop();
     };
-  }, [showSuccess]);
+  }, [showSuccess, spinValue]);
 
   const spin = spinValue.interpolate({
     inputRange: [0, 1],
     outputRange: ["0deg", "360deg"],
   });
 
-  const handleContinue = async () => {
-    // ===== REAL FINGERPRINT/FACE ID SCAN (commented out for now — needs a Dev Build, not Expo Go) =====
-    // try {
-    //     setScanning(true);
-    //
-    //     // Check if device has fingerprint hardware
-    //     const hasHardware = await LocalAuthentication.hasHardwareAsync();
-    //     if (!hasHardware) {
-    //         setScanning(false);
-    //         Alert.alert('Not Supported', 'This device does not have a fingerprint scanner.');
-    //         return;
-    //     }
-    //
-    //     // Check if a fingerprint is enrolled on the device
-    //     const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-    //     if (!isEnrolled) {
-    //         setScanning(false);
-    //         Alert.alert(
-    //             'No Fingerprint Found',
-    //             'Please set up a fingerprint in your phone settings first.'
-    //         );
-    //         return;
-    //     }
-    //
-    //     // Trigger the actual scan (Face ID or Fingerprint depending on device)
-    //     const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
-    //     const isFaceId = types.includes(
-    //         LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION
-    //     );
-    //
-    //     const result = await LocalAuthentication.authenticateAsync({
-    //         promptMessage: isFaceId ? 'Scan your face' : 'Scan your fingerprint',
-    //         cancelLabel: 'Cancel',
-    //         disableDeviceFallback: true,
-    //     });
-    //
-    //     setScanning(false);
-    //
-    //     if (result.success) {
-    //         // TODO: confirm here that the fingerprint is linked to the account (backend)
-    //         setShowSuccess(true);
-    //         setTimeout(() => {
-    //             setShowSuccess(false);
-    //             router.replace('/home');
-    //         }, 2000);
-    //     } else if (result.error !== 'user_cancel') {
-    //         console.log('Biometric auth failed:', result.error);
-    //         Alert.alert(
-    //             'Failed',
-    //             `${isFaceId ? 'Face ID' : 'Fingerprint'} did not match, please try again.\n\n(debug: ${result.error})`
-    //         );
-    //     }
-    // } catch (error) {
-    //     setScanning(false);
-    //     Alert.alert('Error', 'Something went wrong, please try again.');
-    // }
-    // ===== END REAL SCAN =====
+  const isFaceId = !!capability?.isFaceId;
+  const label = capability?.label || "Biometric";
 
-    // TEMP: simulate success so the flow can be tested in Expo Go without a Dev Build
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      router.replace("/home");
-    }, 2000);
-  };
-
-  const handleSkip = () => {
+  const finish = () => {
+    if (isUpdate) {
+      if (router.canGoBack()) router.back();
+      else router.replace("/profile");
+      return;
+    }
     router.replace("/home");
   };
 
+  const goHomeAfterSuccess = () => {
+    setShowSuccess(true);
+    setTimeout(() => {
+      setShowSuccess(false);
+      finish();
+    }, 1600);
+  };
+
+  const syncUserBiometric = async (enabled) => {
+    const token = await getToken();
+    if (!token) throw new Error("Session expired. Please sign in again.");
+
+    // Same as Postman: PUT /api/auth/enable-biometric { enabled: true }
+    await authApi.enableBiometric(token, enabled);
+
+    let nextUser = user ? { ...user, biometricEnabled: enabled } : null;
+    try {
+      const profile = await authApi.getMe(token);
+      nextUser = profile?.user || profile || nextUser;
+      if (nextUser) {
+        nextUser = { ...nextUser, biometricEnabled: enabled };
+      }
+    } catch (_) {}
+
+    if (nextUser) dispatch(setUserData(nextUser));
+    return nextUser;
+  };
+
+  const handleSetBiometric = async () => {
+    if (scanning) return;
+    setScanning(true);
+    try {
+      const cap = capability || (await getBiometricCapability());
+      setCapability(cap);
+
+      if (!cap.available) {
+        Alert.alert(
+          "Not available",
+          "This device does not support Face ID or fingerprint.",
+        );
+        return;
+      }
+      if (!cap.enrolled) {
+        Alert.alert(
+          `No ${cap.label} in phone settings`,
+          `Pehle iPhone Settings → Face ID & Passcode mein ${cap.label} on karo. App sirf flag save karti hai — match login pe hota hai.`,
+        );
+        return;
+      }
+
+      // Postman jaisa: sirf enable flag true — Face ID match yahan nahi,
+      // match tab hoga jab user next time sign-in pe biometric use kare.
+      const nextUser = await syncUserBiometric(true);
+      const phone = nextUser?.phone || user?.phone;
+      const existing = await getBiometricCredentials();
+      await saveBiometricCredentials(phone, existing.pin || null);
+
+      goHomeAfterSuccess();
+    } catch (err) {
+      Alert.alert("Error", err?.message || "Could not enable biometric.");
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleSkip = () => {
+    finish();
+  };
+
+  const handleDisable = () => {
+    Alert.alert("Disable biometric", "Turn off biometric login for this account?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Disable",
+        style: "destructive",
+        onPress: async () => {
+          setScanning(true);
+          try {
+            await syncUserBiometric(false);
+            await clearBiometricCredentials();
+            Alert.alert("Done", "Biometric login disabled.");
+            finish();
+          } catch (err) {
+            Alert.alert("Error", err?.message || "Could not update.");
+          } finally {
+            setScanning(false);
+          }
+        },
+      },
+    ]);
+  };
+
   return (
-    <ScrollView>
+    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
       <View style={styles.container}>
         <View style={styles.headerRow}>
           <TouchableOpacity
@@ -139,42 +192,77 @@ export default function SetFingerprintScreen() {
           >
             <Ionicons name="chevron-back" size={26} color="#000" />
           </TouchableOpacity>
-          <Text style={styles.title}>Set Your Fingerprint</Text>
+          <Text style={styles.title}>Set Biometric</Text>
           <View style={styles.headerSpacer} />
         </View>
 
         <Text style={styles.subtitle}>
-          Add a fingerprint to make your account more secure
+          {isFaceId
+            ? "Use Face ID to make your account more secure"
+            : "Use fingerprint to make your account more secure"}
         </Text>
 
         <View style={styles.fingerprintWrap}>
-          <Image
-            source={require("../assets/images/fingerprint.png")}
-            style={styles.fingerprintImage}
-            resizeMode="contain"
-          />
+          {isFaceId ? (
+            <View style={styles.faceIconWrap}>
+              <Ionicons name="scan" size={140} color={PURPLE} />
+              <Ionicons
+                name="happy-outline"
+                size={64}
+                color={PURPLE}
+                style={styles.faceInnerIcon}
+              />
+            </View>
+          ) : (
+            <Image
+              source={require("../assets/images/fingerprint.png")}
+              style={styles.fingerprintImage}
+              resizeMode="contain"
+            />
+          )}
         </View>
 
         <Text style={styles.helperText}>
-          Please put your finger on the fingerprint{"\n"}scanner to get started.
+          {!capability
+            ? "Checking device biometric…"
+            : !capability.available
+              ? "Biometric hardware not found on this device."
+              : !capability.enrolled
+                ? `Pehle phone Settings mein ${label} on karo.`
+                : `Tap Set Biometric to turn it on. ${label} scan only happens at sign-in.`}
         </Text>
 
         <View style={styles.footer}>
-          <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-            <Text style={styles.skipText}>Skip</Text>
-          </TouchableOpacity>
+          {isUpdate && user?.biometricEnabled ? (
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={handleDisable}
+              disabled={scanning}
+            >
+              <Text style={styles.skipText}>Disable</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={handleSkip}
+              disabled={scanning}
+            >
+              <Text style={styles.skipText}>Skip</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={[
               styles.continueButton,
               scanning && styles.continueButtonDisabled,
             ]}
-            onPress={handleContinue}
+            onPress={handleSetBiometric}
             disabled={scanning}
           >
             {scanning ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={styles.continueText}>continue</Text>
+              <Text style={styles.continueText}>Set Biometric</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -200,14 +288,17 @@ export default function SetFingerprintScreen() {
                   />
                 ))}
                 <View style={styles.modalIconCircle}>
-                  <Ionicons name="person" size={50} color="#fff" />
+                  <Ionicons
+                    name={isFaceId ? "scan" : "finger-print"}
+                    size={50}
+                    color="#fff"
+                  />
                 </View>
               </View>
 
-              <Text style={styles.congratsTitle}>Congratulations!</Text>
+              <Text style={styles.congratsTitle}>Biometric Enabled</Text>
               <Text style={styles.congratsText}>
-                Your account is ready to use. You will be redirected to the Home
-                page in a few seconds.
+                {label} is now on for your account (biometricEnabled: true).
               </Text>
 
               <Animated.Image
@@ -233,7 +324,7 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 90,
+    marginBottom: 40,
   },
   backButton: {
     width: 26,
@@ -252,11 +343,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     textAlign: "center",
     color: "#000",
-    marginBottom: -10,
+    marginBottom: 10,
   },
   fingerprintWrap: {
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 320,
     marginBottom: 0,
+  },
+  faceIconWrap: {
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: "#F1E7FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  faceInnerIcon: {
+    position: "absolute",
   },
   fingerprintImage: {
     width: 400,
@@ -267,6 +371,7 @@ const styles = StyleSheet.create({
     color: "#000",
     textAlign: "center",
     lineHeight: 20,
+    paddingHorizontal: 8,
   },
   footer: {
     flexDirection: "row",
@@ -287,7 +392,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   continueButton: {
-    flex: 1,
+    flex: 1.3,
     backgroundColor: PURPLE,
     borderRadius: 30,
     paddingVertical: 16,

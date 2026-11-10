@@ -30,6 +30,7 @@ import { useBookmarks } from "../context/BookmarkContext";
 import { setToken } from "../store/reducer/AuthConfig";
 import { setUserData } from "../store/reducer/usersSlice";
 import { authApi, saveToken } from "../utils/api";
+import { buildE164Phone } from "../utils/phone";
 const DEFAULT_REGION = {
   latitude: 31.4504,
   longitude: 73.135,
@@ -406,7 +407,8 @@ export default function FillProfileScreen() {
 
     setIsSubmitting(true);
     try {
-      const fullPhoneNumber = `${countryCode}${phone}`;
+      // Drop leading 0 so +92 + 0300... → +92300... (not +920300...)
+      const fullPhoneNumber = buildE164Phone(countryCode, phone);
 
       // 1) Signup — backend only saves phone
       const signupData = await authApi.signup(fullPhoneNumber);

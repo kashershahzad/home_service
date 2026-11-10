@@ -1,7 +1,7 @@
 import * as secureStorage from "./secureStorage";
 
-export const BASE_URL = "http://162.248.246.171:7000/api";
-
+// Postman baseUrl = https://api.itshomely.com  →  paths are /api/auth/...
+export const BASE_URL = "https://api.itshomely.com/api";
 
 async function request(path, { method = "GET", body, token } = {}) {
   const url = `${BASE_URL}${path}`;
@@ -34,6 +34,12 @@ async function request(path, { method = "GET", body, token } = {}) {
   console.log(`[API] response ${res.status}:`, data);
 
   if (!res.ok) {
+    if (res.status === 429) {
+      throw new Error(
+        data.message ||
+          "Too many requests. Wait a few minutes, then try again.",
+      );
+    }
     throw new Error(data.message || "Something went wrong");
   }
   return data;
@@ -68,6 +74,73 @@ export const authApi = {
     }),
 
   getMe: (token) => request("/auth/me", { token }),
+
+  // Postman 12 — Register FCM token (customer)
+  registerFcmToken: (token, body) =>
+    request("/auth/fcm-token", { method: "PUT", token, body }),
+};
+
+export const homeApi = {
+  getHome: (lat, lng, token) =>
+    request(`/home?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`, {
+      token,
+    }),
+};
+
+export const catalogApi = {
+  getCategories: (lat, lng) =>
+    request(
+      `/catalog/categories?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`,
+    ),
+
+  getCategory: (slug, lat, lng, audience) => {
+    const parts = [
+      `lat=${encodeURIComponent(lat)}`,
+      `lng=${encodeURIComponent(lng)}`,
+    ];
+    if (audience) parts.push(`audience=${encodeURIComponent(audience)}`);
+    return request(`/catalog/categories/${encodeURIComponent(slug)}?${parts.join("&")}`);
+  },
+};
+
+export const addressApi = {
+  list: (token) => request("/addresses", { token }),
+
+  create: (token, body) =>
+    request("/addresses", { method: "POST", token, body }),
+
+  update: (token, addressId, body) =>
+    request(`/addresses/${encodeURIComponent(addressId)}`, {
+      method: "PATCH",
+      token,
+      body,
+    }),
+};
+
+export const bookingApi = {
+  // Postman 07 Salon / 06 Cleaning — Review screen totals
+  quote: (token, body) =>
+    request("/bookings/quote", { method: "POST", token, body }),
+
+  // Postman Confirm & Book
+  create: (token, body) =>
+    request("/bookings", { method: "POST", token, body }),
+
+  // Postman 08 — My Bookings
+  list: (token, scope) => {
+    const qs = scope ? `?scope=${encodeURIComponent(scope)}` : "";
+    return request(`/bookings${qs}`, { token });
+  },
+
+  getById: (token, bookingId) =>
+    request(`/bookings/${encodeURIComponent(bookingId)}`, { token }),
+
+  cancel: (token, bookingId, reason = "Changed plans") =>
+    request(`/bookings/${encodeURIComponent(bookingId)}/cancel`, {
+      method: "POST",
+      token,
+      body: { reason },
+    }),
 };
 
 export const serviceApi = {

@@ -255,11 +255,19 @@ export default function MatchingStatus({
   schedule,
   onBack,
   onHelp,
+  serviceTitle,
+  priceLabel,
 }) {
   const insets = useSafeAreaInsets();
   const [stepIndex, setStepIndex] = useState(0);
   const flowStep = FLOW_ORDER[stepIndex] || FLOW_STEPS.MATCHING;
-  const config = SERVICE_CONFIGS[bookingType] || SERVICE_CONFIGS.houseCleaning;
+  const baseConfig =
+    SERVICE_CONFIGS[bookingType] || SERVICE_CONFIGS.houseCleaning;
+  const config = {
+    ...baseConfig,
+    serviceTitle: serviceTitle || baseConfig.serviceTitle,
+    price: priceLabel || baseConfig.price,
+  };
   const step = config.steps[flowStep];
 
   const appointment =

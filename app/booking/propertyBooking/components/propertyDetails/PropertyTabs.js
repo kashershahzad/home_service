@@ -3,10 +3,12 @@ import { fonts } from "../../../../../assets/fonts/fonts";
 import { PROPERTY_TABS } from "./constants";
 import { ACCENT } from "./theme";
 
-export default function PropertyTabs({ value, onChange }) {
+export default function PropertyTabs({ value, onChange, tabs }) {
+  const list = Array.isArray(tabs) && tabs.length ? tabs : PROPERTY_TABS;
+
   return (
     <View style={styles.row}>
-      {PROPERTY_TABS.map((tab) => {
+      {list.map((tab) => {
         const active = tab.id === value;
         return (
           <TouchableOpacity

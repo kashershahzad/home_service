@@ -1,27 +1,32 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
+    Alert,
+    Keyboard,
     StyleSheet,
     Text,
-    View,
-    TouchableOpacity,
     TextInput,
-    Keyboard,
-    Alert,
-    ActivityIndicator,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { authApi, getToken, saveToken } from '../utils/api';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { setToken } from '../store/reducer/AuthConfig';
 import { setUserData } from '../store/reducer/usersSlice';
+import { authApi, getToken, saveToken } from '../utils/api';
+import { saveBiometricCredentials, savePinForBiometric } from '../utils/biometric';
 
 const PIN_LENGTH = 4;
-const REVEAL_DURATION = 500; 
+const REVEAL_DURATION = 500;
 
 export default function CreatePinScreen() {
     const router = useRouter();
     const dispatch = useDispatch();
+    const { mode } = useLocalSearchParams();
+    const isUpdate = mode === 'update';
+    const user = useSelector((state) => state.users.userData);
+
     const [pin, setPin] = useState('');
     const [revealedIndex, setRevealedIndex] = useState(-1);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,7 +54,6 @@ export default function CreatePinScreen() {
                 setRevealedIndex(-1);
             }, REVEAL_DURATION);
         } else {
-            // backspace hua
             setRevealedIndex(-1);
         }
 
@@ -60,7 +64,7 @@ export default function CreatePinScreen() {
         }
     };
 
-    const handleSignup = async () => {
+    const handleSubmit = async () => {
         if (pin.length < PIN_LENGTH || isSubmitting) return;
         Keyboard.dismiss();
 
@@ -68,7 +72,7 @@ export default function CreatePinScreen() {
         try {
             const token = await getToken();
             if (!token) {
-                Alert.alert('Session expired', 'Please sign up again.');
+                Alert.alert('Session expired', 'Please sign in again.');
                 router.replace('/signInNumber');
                 return;
             }
@@ -77,15 +81,37 @@ export default function CreatePinScreen() {
             await saveToken(data.token);
             dispatch(setToken(data.token));
 
+            // Needed so biometric login can call /auth/login with this PIN
+            await savePinForBiometric(pin);
+            if (user?.phone) {
+                await saveBiometricCredentials(user.phone, pin);
+            }
+
             try {
                 const profile = await authApi.getMe(data.token);
-                const user = profile?.user || profile;
-                if (user) dispatch(setUserData(user));
+                const nextUser = profile?.user || profile;
+                if (nextUser) dispatch(setUserData(nextUser));
             } catch (_) {}
+
+            if (isUpdate) {
+                Alert.alert('PIN updated', 'Your PIN has been changed.', [
+                    {
+                        text: 'OK',
+                        onPress: () => {
+                            if (router.canGoBack()) router.back();
+                            else router.replace('/profile');
+                        },
+                    },
+                ]);
+                return;
+            }
 
             router.push('/fingerprint');
         } catch (err) {
-            Alert.alert('Could not set PIN', err.message);
+            Alert.alert(
+                isUpdate ? 'Could not update PIN' : 'Could not set PIN',
+                err.message,
+            );
         } finally {
             setIsSubmitting(false);
         }
@@ -97,11 +123,15 @@ export default function CreatePinScreen() {
                 <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                     <Ionicons name="chevron-back" size={26} color="#000" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Create New PIN</Text>
+                <Text style={styles.title}>
+                    {isUpdate ? 'Update PIN' : 'Create New PIN'}
+                </Text>
                 <View style={styles.headerSpacer} />
             </View>
             <Text style={styles.subtitle}>
-                Add a PIN number to make your account more secure.
+                {isUpdate
+                    ? 'Enter a new 4-digit PIN for your account.'
+                    : 'Add a PIN number to make your account more secure.'}
             </Text>
 
             <TouchableOpacity
@@ -114,13 +144,12 @@ export default function CreatePinScreen() {
                     const showDigit = filled && index === revealedIndex;
                     return (
                         <View key={index} style={styles.pinBox}>
-                            {filled && (
-                                showDigit ? (
+                            {filled &&
+                                (showDigit ? (
                                     <Text style={styles.pinDigit}>{pin[index]}</Text>
                                 ) : (
                                     <View style={styles.pinDot} />
-                                )
-                            )}
+                                ))}
                         </View>
                     );
                 })}
@@ -132,7 +161,7 @@ export default function CreatePinScreen() {
                 keyboardType="number-pad"
                 maxLength={PIN_LENGTH}
                 returnKeyType="done"
-                onSubmitEditing={handleSignup}
+                onSubmitEditing={handleSubmit}
                 autoFocus
                 style={styles.hiddenInput}
                 caretHidden
@@ -143,13 +172,15 @@ export default function CreatePinScreen() {
                     styles.primaryButton,
                     pin.length < PIN_LENGTH && styles.primaryButtonDisabled,
                 ]}
-                onPress={handleSignup}
+                onPress={handleSubmit}
                 disabled={pin.length < PIN_LENGTH || isSubmitting}
             >
                 {isSubmitting ? (
                     <ActivityIndicator color="#fff" />
                 ) : (
-                    <Text style={styles.primaryButtonText}>Signup</Text>
+                    <Text style={styles.primaryButtonText}>
+                        {isUpdate ? 'Update PIN' : 'Continue'}
+                    </Text>
                 )}
             </TouchableOpacity>
         </View>
@@ -176,7 +207,7 @@ const styles = StyleSheet.create({
     },
     title: {
         flex: 1,
-        textAlign: 'left-aligned',
+        textAlign: 'left',
         fontFamily: 'Roboto_800ExtraBold',
         fontSize: 24,
         fontWeight: '800',

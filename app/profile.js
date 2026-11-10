@@ -1,6 +1,6 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -52,6 +52,30 @@ const MENU_ITEMS = [
     route: "/edit-profile",
   },
   {
+    key: "address",
+    label: "Change Address",
+    icon: "location-outline",
+    color: "#0E6E4C",
+    bg: "#E8F5F0",
+    route: "/change-address",
+  },
+  {
+    key: "pin",
+    label: "Update PIN",
+    icon: "keypad-outline",
+    color: "#0EA5E9",
+    bg: "#E0F2FE",
+    route: "/create-pin?mode=update",
+  },
+  {
+    key: "biometric",
+    label: "Set Biometric",
+    icon: "scan-outline",
+    color: "#10B981",
+    bg: "#D1FAE5",
+    route: "/fingerprint?mode=update",
+  },
+  {
     key: "bookmark",
     label: "My Bookmark",
     icon: "bookmark-outline",
@@ -93,7 +117,7 @@ const MENU_ITEMS = [
   },
 ];
 
-function MenuRow({ item, onPress, badge }) {
+function MenuRow({ item, onPress, badge, status }) {
   return (
     <TouchableOpacity
       style={styles.menuRow}
@@ -104,6 +128,7 @@ function MenuRow({ item, onPress, badge }) {
         <Ionicons name={item.icon} size={20} color={item.color} />
       </View>
       <Text style={styles.menuLabel}>{item.label}</Text>
+      {status ? <Text style={styles.statusText}>{status}</Text> : null}
       {badge != null && badge > 0 ? (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{badge > 99 ? "99+" : badge}</Text>
@@ -114,38 +139,60 @@ function MenuRow({ item, onPress, badge }) {
   );
 }
 
+const PROFILE_CACHE_MS = 2 * 60 * 1000; // avoid burning auth rate-limit (20/15min)
+
 export default function ProfileScreen() {
   const router = useRouter();
   const dispatch = useDispatch();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [loading, setLoading] = useState(true);
   const storedUser = useSelector((state) => state.users.userData);
   const [user, setUser] = useState(storedUser?.id ? storedUser : null);
+  const [loading, setLoading] = useState(!storedUser?.id);
   const { refreshForUser, bookmarkedList } = useBookmarks();
+  const lastFetchAt = useRef(0);
+  const inFlight = useRef(false);
 
-  const loadProfile = useCallback(async () => {
-    try {
-      const token = await getToken();
-      if (!token) {
+  const loadProfile = useCallback(
+    async ({ force = false } = {}) => {
+      if (inFlight.current) return;
+      const now = Date.now();
+      if (
+        !force &&
+        user?.id &&
+        lastFetchAt.current &&
+        now - lastFetchAt.current < PROFILE_CACHE_MS
+      ) {
         setLoading(false);
         return;
       }
-      const profile = await authApi.getMe(token);
-      const userData = profile?.user || profile;
-      setUser(userData);
-      dispatch(setUserData(userData));
-    } catch (err) {
-      console.log("Could not load profile:", err?.message || err);
-    } finally {
-      setLoading(false);
-    }
-  }, [dispatch]);
+
+      inFlight.current = true;
+      try {
+        const token = await getToken();
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+        const profile = await authApi.getMe(token);
+        const userData = profile?.user || profile;
+        setUser(userData);
+        dispatch(setUserData(userData));
+        lastFetchAt.current = Date.now();
+      } catch (err) {
+        console.log("Could not load profile:", err?.message || err);
+      } finally {
+        inFlight.current = false;
+        setLoading(false);
+      }
+    },
+    [dispatch, user?.id],
+  );
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
+      if (!user?.id) setLoading(true);
       loadProfile();
-    }, [loadProfile]),
+    }, [loadProfile, user?.id]),
   );
 
   const handleLogout = () => {
@@ -158,6 +205,7 @@ export default function ProfileScreen() {
           setIsLoggingOut(true);
           try {
             await deleteToken();
+            // Keep biometric phone/pin so next sign-in can use fingerprint
             dispatch(logoutAuth());
             dispatch(clearUserData());
             await refreshForUser();
@@ -177,6 +225,9 @@ export default function ProfileScreen() {
       router.push(item.route);
     }
   };
+
+  const biometricStatus =
+    user?.biometricEnabled === true ? "On" : user ? "Off" : null;
 
   const displayName = user?.fullName || user?.nickname || "User";
   const subtitle = user?.email || user?.phone || "";
@@ -254,6 +305,7 @@ export default function ProfileScreen() {
               badge={
                 item.key === "bookmark" ? bookmarkedList?.length : undefined
               }
+              status={item.key === "biometric" ? biometricStatus : undefined}
               onPress={() => handleMenuPress(item)}
             />
             {index < MENU_ITEMS.length - 1 ? (
@@ -391,6 +443,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: COLORS.text,
+  },
+  statusText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: COLORS.subtext,
+    marginRight: 8,
   },
   badge: {
     minWidth: 22,

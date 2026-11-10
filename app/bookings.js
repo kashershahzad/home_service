@@ -1,16 +1,23 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { images } from "../assets/images/image";
 import BottomTabBar from "../components/components/BottomTabBar";
+import { bookingApi, getToken } from "../utils/api";
+import {
+  extractBookingsList,
+  mapBookingToCard,
+} from "../utils/bookingsList";
 
 const COLORS = {
   primary: "#7310FF",
@@ -24,51 +31,6 @@ const COLORS = {
 };
 
 const HIT_SLOP = { top: 14, bottom: 14, left: 14, right: 14 };
-
-const YOUR_BOOKINGS = [
-  {
-    id: "b1",
-    title: "House Cleaning",
-    provider: "Kylee Danford",
-    date: "Dec 22, 2026",
-    dateISO: "2026-12-22",
-    time: "10:00 AM",
-    workingHours: "2",
-    promoCode: "Discount 30% off",
-    price: 2500,
-    status: "Upcoming",
-    image:
-      "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80&auto=format",
-  },
-  {
-    id: "b2",
-    title: "AC Repair",
-    provider: "Cool Air Services",
-    date: "Dec 18, 2026",
-    dateISO: "2026-12-18",
-    time: "02:00 PM",
-    workingHours: "1",
-    promoCode: "",
-    price: 2600,
-    status: "Completed",
-    image:
-      "https://images.unsplash.com/photo-1614624532983-4ce03382d63d?w=400&q=80&auto=format",
-  },
-  {
-    id: "b3",
-    title: "Pipe Fitting",
-    provider: "Hamza Tariq",
-    date: "Dec 10, 2026",
-    dateISO: "2026-12-10",
-    time: "11:00 AM",
-    workingHours: "3",
-    promoCode: "",
-    price: 1500,
-    status: "Cancelled",
-    image:
-      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80&auto=format",
-  },
-];
 
 const BOOK_SERVICES = [
   {
@@ -129,6 +91,37 @@ const STATUS_STYLES = {
 
 export default function BookingsScreen() {
   const router = useRouter();
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadBookings = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = await getToken();
+      if (!token) {
+        setBookings([]);
+        setError("Please sign in to see bookings.");
+        return;
+      }
+      // Postman 08 — List upcoming (Bookings tab)
+      const data = await bookingApi.list(token, "upcoming");
+      const mapped = extractBookingsList(data).map(mapBookingToCard);
+      setBookings(mapped);
+    } catch (err) {
+      setError(err?.message || "Could not load bookings");
+      setBookings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadBookings();
+    }, [loadBookings]),
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
@@ -143,7 +136,6 @@ export default function BookingsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Your Bookings */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Your Bookings</Text>
           <TouchableOpacity
@@ -154,10 +146,19 @@ export default function BookingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {YOUR_BOOKINGS.length === 0 ? (
-          <Text style={styles.emptyText}>No bookings yet.</Text>
+        {loading ? (
+          <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 24 }} />
+        ) : error ? (
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyText}>{error}</Text>
+            <TouchableOpacity onPress={loadBookings} hitSlop={HIT_SLOP}>
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : bookings.length === 0 ? (
+          <Text style={styles.emptyText}>No upcoming bookings yet.</Text>
         ) : (
-          YOUR_BOOKINGS.map((item) => {
+          bookings.map((item) => {
             const statusStyle =
               STATUS_STYLES[item.status] || STATUS_STYLES.Upcoming;
             return (
@@ -178,8 +179,7 @@ export default function BookingsScreen() {
                       date: item.dateISO,
                       dateLabel: item.date,
                       startTime: item.time,
-                      workingHours: item.workingHours,
-                      promoCode: item.promoCode || "",
+                      reference: item.reference || "",
                       mode: "view",
                     },
                   })
@@ -218,17 +218,18 @@ export default function BookingsScreen() {
                       color={COLORS.subtext}
                     />
                     <Text style={styles.metaText}>
-                      {item.date} · {item.time}
+                      {[item.date, item.time].filter(Boolean).join(" · ")}
                     </Text>
                   </View>
-                  <Text style={styles.bookingPrice}>Rs.{item.price}</Text>
+                  <Text style={styles.bookingPrice}>
+                    Rs.{Number(item.price || 0).toLocaleString("en-PK")}
+                  </Text>
                 </View>
               </TouchableOpacity>
             );
           })
         )}
 
-        {/* Book Your Service */}
         <View style={[styles.sectionHeader, { marginTop: 22 }]}>
           <Text style={styles.sectionTitle}>Book Your Service</Text>
           <TouchableOpacity
@@ -303,11 +304,17 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   seeAll: { fontSize: 13, color: COLORS.primary, fontWeight: "600" },
+  emptyWrap: { alignItems: "center", marginVertical: 16, gap: 8 },
   emptyText: {
     textAlign: "center",
     color: COLORS.subtext,
     fontSize: 13,
-    marginVertical: 20,
+    marginVertical: 8,
+  },
+  retryText: {
+    color: COLORS.primary,
+    fontWeight: "700",
+    fontSize: 13,
   },
   bookingCard: {
     flexDirection: "row",
@@ -390,29 +397,4 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontWeight: "500",
   },
-  tabBar: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingTop: 14,
-    paddingBottom: 28,
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 8,
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  tabItem: { flex: 1, alignItems: "center" },
-  tabLabel: {
-    fontSize: 12,
-    color: COLORS.subtext,
-    marginTop: 5,
-    fontWeight: "500",
-  },
-  tabLabelActive: { color: COLORS.primary, fontWeight: "700" },
 });

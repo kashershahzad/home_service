@@ -1,20 +1,25 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 import { fonts } from "../../../../../assets/fonts/fonts";
-import { images } from "../../../../../assets/images/image";
+// import { images } from "../../../../../assets/images/image";
+import BhkSelector from "./BhkSelector";
 import {
+  BHK_OPTIONS,
   HOUSE_ROOMS,
   KANAL_CHIPS,
   MARLA_CHIPS,
   STORIES,
 } from "./constants";
 import RoomCountsCard from "./RoomCountsCard";
-import SizeModeCard from "./SizeModeCard";
+// import SizeModeCard from "./SizeModeCard";
 import StoriesSelector from "./StoriesSelector";
 import UnitMeasurementBlock from "./UnitMeasurementBlock";
 
 export default function HouseContent({
-  sizeMode,
-  onSizeModeChange,
+  // sizeMode,
+  // onSizeModeChange,
+  bhk,
+  onBhkChange,
+  bhkOptions,
   plotUnit,
   onPlotUnitChange,
   plotSize,
@@ -23,10 +28,18 @@ export default function HouseContent({
   onStoriesChange,
   roomCounts,
   onChangeCount,
+  rooms,
 }) {
+  const options =
+    Array.isArray(bhkOptions) && bhkOptions.length ? bhkOptions : BHK_OPTIONS;
+  const roomList = Array.isArray(rooms) && rooms.length ? rooms : HOUSE_ROOMS;
+
   return (
     <>
+      <BhkSelector options={options} value={bhk} onChange={onBhkChange} />
+
       <Text style={styles.sectionLabel}>Plot size</Text>
+      {/* Preset size / Custom — hidden
       <View style={styles.sizeRow}>
         <SizeModeCard
           icon={images.plotSize}
@@ -43,6 +56,7 @@ export default function HouseContent({
           onPress={() => onSizeModeChange("custom")}
         />
       </View>
+      */}
 
       <UnitMeasurementBlock
         title="Unit Measurement"
@@ -73,7 +87,7 @@ export default function HouseContent({
       />
 
       <RoomCountsCard
-        rooms={HOUSE_ROOMS}
+        rooms={roomList}
         roomCounts={roomCounts}
         onChangeCount={onChangeCount}
       />
@@ -88,9 +102,9 @@ const styles = StyleSheet.create({
     color: "#14332C",
     marginBottom: 12,
   },
-  sizeRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 20,
-  },
+  // sizeRow: {
+  //   flexDirection: "row",
+  //   gap: 12,
+  //   marginBottom: 20,
+  // },
 });

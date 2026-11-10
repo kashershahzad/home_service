@@ -13,6 +13,9 @@
       "infoPlist": {
         "NSFaceIDUsageDescription": "We use Face ID to securely verify your identity",
         "NSLocationWhenInUseUsageDescription": "We use your location to help you set your address accurately."
+      },
+      "config": {
+        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
       }
     },
     "android": {
@@ -77,6 +80,13 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "We use your location to help you set your address accurately."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#0E6E4C"
         }
       ]
     ],

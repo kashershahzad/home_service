@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   Platform,
   ScrollView,
@@ -14,9 +15,8 @@ import { images } from "../../../assets/images/image";
 import StepsHeader from "./components/StepsHeader";
 
 const ACCENT = "#0E6E5C";
-const ACCENT_SOFT = "#E8F5F0";
 
-const PROPERTIES = [
+const FALLBACK_PROPERTIES = [
   {
     id: "flat",
     title: "Flat",
@@ -70,10 +70,21 @@ function PropertyCard({ item, selected, onPress }) {
 
 export default function PropertyType({
   initialPropertyId = "flat",
+  propertyTypes,
+  loading = false,
   onBack,
   onContinue,
 }) {
-  const [selectedId, setSelectedId] = useState(initialPropertyId);
+  const properties = useMemo(
+    () =>
+      Array.isArray(propertyTypes) && propertyTypes.length
+        ? propertyTypes
+        : FALLBACK_PROPERTIES,
+    [propertyTypes],
+  );
+  const [selectedId, setSelectedId] = useState(
+    initialPropertyId || properties[0]?.id || "flat",
+  );
 
   return (
     <View style={styles.container}>
@@ -81,22 +92,32 @@ export default function PropertyType({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <StepsHeader title="Property Type" onBack={onBack} step={2} total={6} />
+        <StepsHeader
+          title="Property Type"
+          onBack={onBack}
+          step={1}
+          total={5}
+          progressRight="Property"
+        />
 
         <View style={styles.contentBody}>
           <Text style={styles.heroTitle}>What are we cleaning?</Text>
           <Text style={styles.heroSubtitle}>Select your property type.</Text>
 
-          <View style={styles.grid}>
-            {PROPERTIES.map((item) => (
-              <PropertyCard
-                key={item.id}
-                item={item}
-                selected={item.id === selectedId}
-                onPress={() => setSelectedId(item.id)}
-              />
-            ))}
-          </View>
+          {loading ? (
+            <ActivityIndicator color={ACCENT} style={{ marginTop: 28 }} />
+          ) : (
+            <View style={styles.grid}>
+              {properties.map((item) => (
+                <PropertyCard
+                  key={item.id}
+                  item={item}
+                  selected={item.id === selectedId}
+                  onPress={() => setSelectedId(item.id)}
+                />
+              ))}
+            </View>
+          )}
         </View>
 
         <View style={styles.footer}>

@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -9,15 +11,22 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { fonts } from "../../../assets/fonts/fonts";
 import { images } from "../../../assets/images/image";
+import ChangeAddressForm from "../../../components/ChangeAddressForm";
+import { addressApi, getToken } from "../../../utils/api";
+import {
+  fetchCatalogCategory,
+  mapCatalogTimeSlots,
+} from "../../../utils/catalog";
 import StepsHeader from "./components/StepsHeader";
 
 const ACCENT = "#0E6E4C";
 const CARD_BG = "#F2F4F3";
 const ACTIVE_BG = "#C8EADF";
 
-const TIME_SLOTS = [
+const FALLBACK_TIME_SLOTS = [
   {
     id: "morning",
     title: "Morning",
@@ -96,15 +105,115 @@ export default function ScheduleAddress({
   onBack,
   onContinue,
   hideSteps = false,
+  catalogSlug = "home-cleaning",
+  loadCatalogSlots = true,
+  initialTimeSlots,
+  step = 5,
+  totalSteps = 6,
 }) {
   const dateOptions = useMemo(() => buildDateOptions(7), []);
+  const [timeSlots, setTimeSlots] = useState(
+    Array.isArray(initialTimeSlots) && initialTimeSlots.length
+      ? initialTimeSlots
+      : FALLBACK_TIME_SLOTS,
+  );
+  const [slotsLoading, setSlotsLoading] = useState(
+    !!loadCatalogSlots &&
+      !(Array.isArray(initialTimeSlots) && initialTimeSlots.length),
+  );
   const [selectedDateId, setSelectedDateId] = useState(
     initialSchedule?.dateId || dateOptions[2]?.id || dateOptions[0]?.id,
   );
   const [timeSlotId, setTimeSlotId] = useState(
     initialSchedule?.timeSlotId || "afternoon",
   );
-  const [address] = useState(initialSchedule?.address || DEFAULT_ADDRESS);
+  const [address, setAddress] = useState(
+    initialSchedule?.address || DEFAULT_ADDRESS,
+  );
+  const [addressId, setAddressId] = useState(
+    initialSchedule?.addressId || initialSchedule?.address?.id || null,
+  );
+  const [changeOpen, setChangeOpen] = useState(false);
+  const [addressLoading, setAddressLoading] = useState(
+    !initialSchedule?.address,
+  );
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (initialSchedule?.address && initialSchedule?.addressId) {
+        setAddressLoading(false);
+        return;
+      }
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const data = await addressApi.list(token);
+        const list =
+          data?.addresses ||
+          data?.data ||
+          (Array.isArray(data) ? data : []);
+        const preferred =
+          list.find((a) => a.isDefault) || list[0] || null;
+        if (!mounted || !preferred) return;
+        setAddressId(preferred._id || preferred.id || null);
+        setAddress({
+          id: preferred._id || preferred.id || null,
+          label: preferred.label || "Home",
+          line: preferred.line || "",
+          area: preferred.area || "",
+          city: preferred.city || "",
+        });
+      } catch (err) {
+        console.log("[address] schedule load failed:", err?.message || err);
+      } finally {
+        if (mounted) setAddressLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [initialSchedule?.address, initialSchedule?.addressId]);
+
+  useEffect(() => {
+    if (Array.isArray(initialTimeSlots) && initialTimeSlots.length) {
+      setTimeSlots(initialTimeSlots);
+      setTimeSlotId((prev) =>
+        initialTimeSlots.some((s) => s.id === prev)
+          ? prev
+          : initialTimeSlots[0].id,
+      );
+      setSlotsLoading(false);
+      return;
+    }
+
+    if (!loadCatalogSlots || !catalogSlug) {
+      setSlotsLoading(false);
+      return;
+    }
+    let mounted = true;
+    (async () => {
+      try {
+        // Catalog API #4 — timeSlots from home-cleaning (also reused for hair schedule UI)
+        const { category } = await fetchCatalogCategory(catalogSlug);
+        const mapped = mapCatalogTimeSlots(category?.timeSlots || []);
+        if (!mounted) return;
+        if (mapped.length) {
+          setTimeSlots(mapped);
+          setTimeSlotId((prev) =>
+            mapped.some((s) => s.id === prev) ? prev : mapped[0].id,
+          );
+        }
+      } catch (err) {
+        console.log("[catalog] timeSlots failed:", err?.message || err);
+      } finally {
+        if (mounted) setSlotsLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [catalogSlug, loadCatalogSlots, initialTimeSlots]);
 
   const selectedDate = dateOptions.find((d) => d.id === selectedDateId);
   const monthLabel = selectedDate
@@ -115,7 +224,7 @@ export default function ScheduleAddress({
     : "";
 
   const handleContinue = () => {
-    const slot = TIME_SLOTS.find((s) => s.id === timeSlotId);
+    const slot = timeSlots.find((s) => s.id === timeSlotId);
     onContinue?.({
       dateId: selectedDateId,
       date: selectedDate?.date?.toISOString?.() || null,
@@ -124,6 +233,7 @@ export default function ScheduleAddress({
       timeRange: slot?.range,
       displayTime: slot?.displayTime,
       address,
+      addressId: addressId || address?.id || null,
     });
   };
 
@@ -136,8 +246,8 @@ export default function ScheduleAddress({
         <StepsHeader
           title="Schedule & Address"
           onBack={onBack}
-          step={5}
-          total={6}
+          step={step}
+          total={totalSteps}
           progressRight="Schedule"
           hideSteps={hideSteps}
         />
@@ -191,14 +301,18 @@ export default function ScheduleAddress({
             Preferred time
           </Text>
           <View style={styles.timeList}>
-            {TIME_SLOTS.map((item) => (
-              <TimeSlotCard
-                key={item.id}
-                item={item}
-                selected={item.id === timeSlotId}
-                onPress={() => setTimeSlotId(item.id)}
-              />
-            ))}
+            {slotsLoading ? (
+              <ActivityIndicator color={ACCENT} style={{ marginVertical: 16 }} />
+            ) : (
+              timeSlots.map((item) => (
+                <TimeSlotCard
+                  key={item.id}
+                  item={item}
+                  selected={item.id === timeSlotId}
+                  onPress={() => setTimeSlotId(item.id)}
+                />
+              ))
+            )}
           </View>
 
           <Text style={[styles.sectionLabel, { marginTop: 8 }]}>
@@ -214,12 +328,26 @@ export default function ScheduleAddress({
             </View>
             <View style={styles.addressCopy}>
               <View style={styles.addressTitleRow}>
-                <Text style={styles.addressTitle}>{address.label}</Text>
-                <TouchableOpacity activeOpacity={0.8}>
+                <Text style={styles.addressTitle}>
+                  {address.label || "Home"}
+                </Text>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setChangeOpen(true)}
+                >
                   <Text style={styles.changeLink}>Change</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.addressLine}>{address.line}</Text>
+              {addressLoading ? (
+                <ActivityIndicator
+                  color={ACCENT}
+                  style={{ alignSelf: "flex-start", marginTop: 4 }}
+                />
+              ) : (
+                <Text style={styles.addressLine}>
+                  {address.line || "No address saved yet"}
+                </Text>
+              )}
             </View>
           </View>
         </View>
@@ -234,6 +362,31 @@ export default function ScheduleAddress({
             <Ionicons name="arrow-forward" size={18} color="#fff" />
           </TouchableOpacity>
         </View>
+
+        <Modal
+          visible={changeOpen}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={() => setChangeOpen(false)}
+        >
+          <SafeAreaView style={styles.modalSafe} edges={[]}>
+            <ChangeAddressForm
+              title="Change Address"
+              initialAddress={{
+                ...address,
+                id: addressId || address?.id,
+                lat: address?.lat,
+                lng: address?.lng,
+              }}
+              onCancel={() => setChangeOpen(false)}
+              onSaved={({ addressId: id, address: next }) => {
+                setAddressId(id);
+                setAddress(next);
+                setChangeOpen(false);
+              }}
+            />
+          </SafeAreaView>
+        </Modal>
       </ScrollView>
     </View>
   );
@@ -440,4 +593,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   continueText: { color: "#fff", fontSize: 16, fontFamily: fonts.bold },
+  modalSafe: { flex: 1, backgroundColor: "#F6FAF8" },
 });

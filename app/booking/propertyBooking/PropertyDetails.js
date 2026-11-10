@@ -13,6 +13,7 @@ import StepsHeader from "./components/StepsHeader";
 import {
   BHK_DEFAULTS,
   PROPERTY_SUBTITLES,
+  PROPERTY_TABS,
   PROPERTY_TITLES,
 } from "./components/propertyDetails/constants";
 import FlatContent from "./components/propertyDetails/FlatContent";
@@ -25,16 +26,44 @@ import { ACCENT } from "./components/propertyDetails/theme";
 export default function PropertyDetails({
   initialPropertyId = "flat",
   initialDetails,
+  catalog,
   onBack,
   onContinue,
 }) {
+  const bhkOptions = catalog?.bhkOptions;
+  const bhkDefaults = useMemo(
+    () =>
+      catalog?.bhkDefaults && Object.keys(catalog.bhkDefaults).length
+        ? { ...BHK_DEFAULTS, ...catalog.bhkDefaults }
+        : BHK_DEFAULTS,
+    [catalog?.bhkDefaults],
+  );
+  const flatRooms = catalog?.flatRooms;
+  const propertyTabs = useMemo(() => {
+    if (Array.isArray(catalog?.propertyTypes) && catalog.propertyTypes.length) {
+      return catalog.propertyTypes.map((item) => ({
+        id: item.id,
+        label: item.title,
+      }));
+    }
+    return PROPERTY_TABS;
+  }, [catalog?.propertyTypes]);
+
+  const defaultBhk =
+    initialDetails?.bhk ||
+    bhkOptions?.find((b) => b.id === "2bhk")?.id ||
+    bhkOptions?.[0]?.id ||
+    "2bhk";
+
   const [propertyId, setPropertyId] = useState(initialPropertyId);
   const [sizeMode, setSizeMode] = useState(
     initialDetails?.sizeMode || "preset",
   );
-  const [bhk, setBhk] = useState(initialDetails?.bhk || "2bhk");
+  const [bhk, setBhk] = useState(defaultBhk);
   const [roomCounts, setRoomCounts] = useState(
-    initialDetails?.roomCounts || BHK_DEFAULTS["2bhk"],
+    initialDetails?.roomCounts ||
+      bhkDefaults[defaultBhk] ||
+      BHK_DEFAULTS["2bhk"],
   );
   const [plotUnit, setPlotUnit] = useState(initialDetails?.plotUnit || "marla");
   const [plotSize, setPlotSize] = useState(initialDetails?.plotSize || 10);
@@ -69,7 +98,9 @@ export default function PropertyDetails({
 
   const applyBhk = (nextBhk) => {
     setBhk(nextBhk);
-    setRoomCounts(BHK_DEFAULTS[nextBhk] || BHK_DEFAULTS["2bhk"]);
+    setRoomCounts(
+      bhkDefaults[nextBhk] || BHK_DEFAULTS[nextBhk] || BHK_DEFAULTS["2bhk"],
+    );
   };
 
   const updateCount = (id, delta) => {
@@ -82,8 +113,9 @@ export default function PropertyDetails({
   const handleContinue = () => {
     onContinue?.({
       propertyId,
-      sizeMode,
-      bhk: propertyId === "flat" && sizeMode === "preset" ? bhk : null,
+      sizeMode: "preset",
+      bhk:
+        propertyId === "flat" || propertyId === "house" ? bhk : null,
       roomCounts,
       plotUnit,
       plotSize,
@@ -106,8 +138,8 @@ export default function PropertyDetails({
         <StepsHeader
           title="Property Details"
           onBack={onBack}
-          step={3}
-          total={6}
+          step={2}
+          total={5}
           progressRight="Space Configuration"
         />
 
@@ -115,23 +147,28 @@ export default function PropertyDetails({
           <Text style={styles.heroTitle}>{title}</Text>
           <Text style={styles.heroSubtitle}>{subtitle}</Text>
 
-          <PropertyTabs value={propertyId} onChange={setPropertyId} />
+          <PropertyTabs
+            value={propertyId}
+            onChange={setPropertyId}
+            tabs={propertyTabs}
+          />
 
           {propertyId === "flat" ? (
             <FlatContent
-              sizeMode={sizeMode}
-              onSizeModeChange={setSizeMode}
               bhk={bhk}
               onBhkChange={applyBhk}
               roomCounts={roomCounts}
               onChangeCount={updateCount}
+              bhkOptions={bhkOptions}
+              rooms={flatRooms}
             />
           ) : null}
 
           {propertyId === "house" ? (
             <HouseContent
-              sizeMode={sizeMode}
-              onSizeModeChange={setSizeMode}
+              bhk={bhk}
+              onBhkChange={applyBhk}
+              bhkOptions={bhkOptions}
               plotUnit={plotUnit}
               onPlotUnitChange={setPlotUnit}
               plotSize={plotSize}
@@ -140,6 +177,7 @@ export default function PropertyDetails({
               onStoriesChange={setStories}
               roomCounts={roomCounts}
               onChangeCount={updateCount}
+              rooms={catalog?.roomFields}
             />
           ) : null}
 

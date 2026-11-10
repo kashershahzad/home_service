@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   Platform,
   ScrollView,
@@ -10,6 +11,10 @@ import {
   View,
 } from "react-native";
 import { fonts } from "../../../assets/fonts/fonts";
+import {
+  fetchCatalogCategory,
+  mapCatalogAddOns,
+} from "../../../utils/catalog";
 import StepsHeader from "./components/StepsHeader";
 import { EXTRAS_CATALOG } from "./constants/extras";
 
@@ -53,11 +58,63 @@ function ExtraCard({ item, selected, onPress }) {
 }
 
 export default function ExtrasCondition({
-  initialExtras = ["oven", "windows"],
+  initialExtras = [],
+  catalogAddOns,
   onBack,
   onContinue,
 }) {
   const [selectedExtras, setSelectedExtras] = useState(initialExtras);
+  const [extras, setExtras] = useState(
+    Array.isArray(catalogAddOns) && catalogAddOns.length
+      ? catalogAddOns
+      : EXTRAS_CATALOG,
+  );
+  const [loading, setLoading] = useState(
+    !(Array.isArray(catalogAddOns) && catalogAddOns.length),
+  );
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (Array.isArray(catalogAddOns) && catalogAddOns.length) {
+      setExtras(catalogAddOns);
+      setLoading(false);
+      if (!initialExtras?.length) {
+        const defaults = catalogAddOns
+          .filter((a) => ["windows", "inside-oven", "oven"].includes(a.slug))
+          .map((a) => a.id);
+        if (defaults.length) setSelectedExtras(defaults);
+      }
+      return;
+    }
+
+    let mounted = true;
+    (async () => {
+      try {
+        // Catalog API #4 — Home Cleaning detail (addOns)
+        const { category } = await fetchCatalogCategory("home-cleaning");
+        const mapped = mapCatalogAddOns(category?.addOns || []);
+        if (!mounted) return;
+        if (mapped.length) {
+          setExtras(mapped);
+          if (!initialExtras?.length) {
+            const defaults = mapped
+              .filter((a) =>
+                ["windows", "inside-oven", "oven"].includes(a.slug),
+              )
+              .map((a) => a.id);
+            setSelectedExtras(defaults);
+          }
+        }
+      } catch (err) {
+        if (mounted) setError(err?.message || "Could not load add-ons");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [catalogAddOns, initialExtras]);
 
   const toggleExtra = (id) => {
     setSelectedExtras((prev) =>
@@ -66,8 +123,12 @@ export default function ExtrasCondition({
   };
 
   const handleContinue = () => {
+    const selectedItems = extras.filter((item) =>
+      selectedExtras.includes(item.id),
+    );
     onContinue?.({
       extras: selectedExtras,
+      extrasItems: selectedItems,
     });
   };
 
@@ -80,9 +141,9 @@ export default function ExtrasCondition({
         <StepsHeader
           title="Extras & Condition"
           onBack={onBack}
-          step={4}
-          total={6}
-          progressRight="Space Configuration"
+          step={3}
+          total={5}
+          progressRight="Extras"
         />
 
         <View style={styles.contentBody}>
@@ -96,16 +157,24 @@ export default function ExtrasCondition({
             Select add-on services needed (multiple allowed)
           </Text>
 
-          <View style={styles.extrasGrid}>
-            {EXTRAS_CATALOG.map((item) => (
-              <ExtraCard
-                key={item.id}
-                item={item}
-                selected={selectedExtras.includes(item.id)}
-                onPress={() => toggleExtra(item.id)}
-              />
-            ))}
-          </View>
+          {loading ? (
+            <ActivityIndicator color={ACCENT} style={{ marginTop: 24 }} />
+          ) : (
+            <View style={styles.extrasGrid}>
+              {extras.map((item) => (
+                <ExtraCard
+                  key={item.id}
+                  item={item}
+                  selected={selectedExtras.includes(item.id)}
+                  onPress={() => toggleExtra(item.id)}
+                />
+              ))}
+            </View>
+          )}
+
+          {error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : null}
         </View>
 
         <View style={styles.footer}>
@@ -113,6 +182,7 @@ export default function ExtrasCondition({
             style={styles.continueBtn}
             onPress={handleContinue}
             activeOpacity={0.85}
+            disabled={loading}
           >
             <Text style={styles.continueText}>Continue</Text>
             <Ionicons name="arrow-forward" size={18} color="#fff" />
@@ -223,6 +293,12 @@ const styles = StyleSheet.create({
     color: "#6F7975",
   },
   extraPriceSelected: { color: ACCENT },
+  errorText: {
+    marginTop: 12,
+    color: "#B91C1C",
+    fontSize: 13,
+    fontFamily: fonts.medium,
+  },
   footer: {
     paddingHorizontal: 20,
     paddingTop: 24,
