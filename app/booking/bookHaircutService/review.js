@@ -120,10 +120,10 @@ export default function HaircutReviewBooking() {
         scheduleSlot: String(params.scheduleSlot || "evening"),
         markPaid: true,
       });
+      const apiId = booking?.id || booking?._id || null;
       const bookingId =
-        booking?.id ||
-        booking?._id ||
         booking?.reference ||
+        apiId ||
         `HS-${Math.floor(1000 + Math.random() * 9000)}`;
       const total =
         booking?.pricing?.total ??
@@ -133,7 +133,8 @@ export default function HaircutReviewBooking() {
       router.replace({
         pathname: "/booking/bookHaircutService/confirmed",
         params: {
-          bookingId: String(bookingId),
+          bookingId: String(bookingId).replace(/^#/, ""),
+          bookingApiId: String(apiId || bookingId).replace(/^#/, ""),
           scheduleTime: schedule.displayTime || "",
           addressLine: schedule.address?.line || "",
           packageTitle: packageInfo.title,

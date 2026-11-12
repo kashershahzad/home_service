@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
@@ -8,11 +9,12 @@ import CustomText from "../../../../components/components/CustomText";
 import Icons from "../../../../components/components/Icons";
 import ImageFast from "../../../../components/components/ImageFast";
 import ScreenWrapper from "../../../../components/components/ScreenWrapper";
+import { bookingApi, getToken } from "../../../../utils/api";
 import {
   BOOKING_TYPES,
-  FLOW_ORDER,
   FLOW_STEPS,
-  SERVICE_CONFIGS,
+  buildStepContent,
+  getServiceConfig,
 } from "./serviceConfigs";
 import TrackingMap from "./TrackingMap";
 
@@ -20,6 +22,7 @@ const ACCENT = "#0E6E4C";
 const TEXT = "#14332C";
 const MUTED = "#888888";
 const BADGE_BG = "#C5EFDE";
+const POLL_MS = 5000;
 
 function Sparkle({ size = 8, style }) {
   return (
@@ -32,19 +35,21 @@ function Sparkle({ size = 8, style }) {
   );
 }
 
-function ProgressRing({ icon, progress = 0.55, showSparkles = true }) {
+function ProgressRing({
+  icon,
+  iconHasBg = false,
+  progress = 0.55,
+  showSparkles = true,
+}) {
   const size = 86;
   const stroke = 8;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
-  const offset = circumference * (1 - progress);
+  const clamped = Math.max(0, Math.min(1, Number(progress) || 0));
+  const offset = circumference * (1 - clamped);
 
   return (
     <View style={styles.ringWrap}>
-      <View style={styles.ringIconClip}>
-        <ImageFast source={icon} style={styles.ringIcon} resizeMode="cover" />
-      </View>
-
       <View style={styles.ringBg} pointerEvents="none" />
 
       <Svg
@@ -75,6 +80,23 @@ function ProgressRing({ icon, progress = 0.55, showSparkles = true }) {
         />
       </Svg>
 
+      <View
+        style={[
+          styles.ringIconClip,
+          !iconHasBg && styles.ringIconClipSolid,
+        ]}
+      >
+        {icon ? (
+          <Image
+            source={icon}
+            style={iconHasBg ? styles.ringIconFilled : styles.ringIconGlyph}
+            resizeMode="contain"
+          />
+        ) : (
+          <Icons family="Ionicons" name="person" size={22} color="#FFFFFF" />
+        )}
+      </View>
+
       {showSparkles ? (
         <>
           <Sparkle size={9} style={styles.sparkle1} />
@@ -86,25 +108,61 @@ function ProgressRing({ icon, progress = 0.55, showSparkles = true }) {
   );
 }
 
-function ServiceDetails({ config, appointment, address, bottomPad }) {
+/** Same status rules as booking-view.js → matching flow step. */
+function resolveFlowStep(rawStatus, hasAssignee) {
+  const s = String(rawStatus || "")
+    .toLowerCase()
+    .replace(/[_\s-]+/g, "");
+  if (
+    s.includes("ontheway") ||
+    s.includes("enroute") ||
+    s.includes("dispatched") ||
+    s === "started" ||
+    s === "inprogress"
+  ) {
+    return FLOW_STEPS.ON_THE_WAY;
+  }
+  if (s === "assigned" || s.includes("assigned") || hasAssignee) {
+    return FLOW_STEPS.ASSIGNED;
+  }
+  return FLOW_STEPS.MATCHING;
+}
+
+function pickAssignees(booking = {}) {
+  if (Array.isArray(booking.assignees)) return booking.assignees;
+  if (Array.isArray(booking.assignedProfessionals))
+    return booking.assignedProfessionals;
+  if (Array.isArray(booking.professionals)) return booking.professionals;
+  return [];
+}
+
+function ServiceDetails({
+  serviceTitle,
+  price,
+  appointment,
+  address,
+  bottomPad,
+}) {
   return (
     <View style={[styles.detailsCard, { paddingBottom: bottomPad }]}>
       <View style={styles.handle} />
       <View style={styles.servicePanel}>
         <View style={styles.detailsHeader}>
           <CustomText
-            label={config.serviceTitle}
+            label={serviceTitle || "Service"}
             fontSize={18}
             fontFamily={fonts.bold}
             color={TEXT}
             containerStyle={styles.serviceTitle}
           />
-          <CustomText
-            label={config.price}
-            fontSize={18}
-            fontFamily={fonts.bold}
-            color={ACCENT}
-          />
+          {price ? (
+            <CustomText
+              label={price}
+              fontSize={18}
+              fontFamily={fonts.bold}
+              color={ACCENT}
+            />
+          ) : null}
         </View>
 
         <View style={styles.detailsDivider} />
@@ -125,7 +183,7 @@ function ServiceDetails({ config, appointment, address, bottomPad }) {
                 marginBottom={2}
               />
               <CustomText
-                label={appointment}
+                label={appointment || "—"}
                 fontSize={13}
                 fontFamily={fonts.semiBold}
                 color={TEXT}
@@ -149,7 +207,7 @@ function ServiceDetails({ config, appointment, address, bottomPad }) {
                 marginBottom={2}
               />
               <CustomText
-                label={address}
+                label={address || "—"}
                 fontSize={13}
                 fontFamily={fonts.semiBold}
                 color={TEXT}
@@ -163,8 +221,28 @@ function ServiceDetails({ config, appointment, address, bottomPad }) {
   );
 }
 
-function ProviderProfile({ config, bottomPad }) {
-  const provider = config.provider;
+function ProviderProfile({ provider, chatLabel, bottomPad, bookingId, onChat }) {
+  if (!provider?.name) {
+    return (
+      <View style={[styles.detailsCard, { paddingBottom: bottomPad }]}>
+        <View style={styles.handle} />
+        <CustomText
+          label="Professional details will appear once assigned."
+          fontSize={14}
+          fontFamily={fonts.medium}
+          color={MUTED}
+          textAlign="center"
+          marginBottom={8}
+        />
+      </View>
+    );
+  }
+
+  const avatarSource = provider.avatar
+    ? typeof provider.avatar === "string"
+      ? { uri: provider.avatar }
+      : provider.avatar
+    : null;
 
   return (
     <View style={[styles.detailsCard, { paddingBottom: bottomPad }]}>
@@ -172,11 +250,17 @@ function ProviderProfile({ config, bottomPad }) {
 
       <View style={styles.profileCard}>
         <View style={styles.avatarWrap}>
-          <ImageFast
-            source={provider.avatar}
-            style={styles.avatar}
-            resizeMode="cover"
-          />
+          {avatarSource ? (
+            <ImageFast
+              source={avatarSource}
+              style={styles.avatar}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <Icons family="Ionicons" name="person" size={22} color={MUTED} />
+            </View>
+          )}
           <View style={styles.verifiedBadge}>
             <Icons family="Ionicons" name="checkmark" size={10} color="#FFFFFF" />
           </View>
@@ -190,30 +274,38 @@ function ProviderProfile({ config, bottomPad }) {
               fontFamily={fonts.bold}
               color={TEXT}
             />
-            <View style={styles.topProBadge}>
-              <CustomText
-                label={provider.badge}
-                fontSize={11}
-                fontFamily={fonts.semiBold}
-                color={ACCENT}
-              />
-            </View>
+            {provider.badge ? (
+              <View style={styles.topProBadge}>
+                <CustomText
+                  label={provider.badge}
+                  fontSize={11}
+                  fontFamily={fonts.semiBold}
+                  color={ACCENT}
+                />
+              </View>
+            ) : null}
           </View>
           <View style={styles.metaRow}>
-            <Icons family="Ionicons" name="star" size={13} color="#F5B400" />
-            <CustomText
-              label={provider.rating}
-              fontSize={13}
-              fontFamily={fonts.semiBold}
-              color={TEXT}
-              marginLeft={4}
-            />
-            <CustomText
-              label={` · ${provider.vehicle}`}
-              fontSize={12}
-              fontFamily={fonts.regular}
-              color={MUTED}
-            />
+            {provider.rating ? (
+              <>
+                <Icons family="Ionicons" name="star" size={13} color="#F5B400" />
+                <CustomText
+                  label={provider.rating}
+                  fontSize={13}
+                  fontFamily={fonts.semiBold}
+                  color={TEXT}
+                  marginLeft={4}
+                />
+              </>
+            ) : null}
+            {provider.vehicle ? (
+              <CustomText
+                label={`${provider.rating ? " · " : ""}${provider.vehicle}`}
+                fontSize={12}
+                fontFamily={fonts.regular}
+                color={MUTED}
+              />
+            ) : null}
           </View>
         </View>
 
@@ -222,7 +314,17 @@ function ProviderProfile({ config, bottomPad }) {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.chatCard} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={styles.chatCard}
+        activeOpacity={0.85}
+        onPress={() =>
+          onChat?.({
+            name: provider.name,
+            bookingId,
+            chatLabel,
+          })
+        }
+      >
         <View style={styles.chatIconWrap}>
           <Icons
             family="Ionicons"
@@ -232,7 +334,7 @@ function ProviderProfile({ config, bottomPad }) {
           />
         </View>
         <CustomText
-          label={config.chatLabel}
+          label={chatLabel || "Chat"}
           fontSize={15}
           fontFamily={fonts.bold}
           color={TEXT}
@@ -249,46 +351,188 @@ function ProviderProfile({ config, bottomPad }) {
   );
 }
 
+function formatMoney(total) {
+  if (total == null || total === "") return null;
+  const n = Number(total);
+  if (!Number.isFinite(n)) return String(total);
+  return `Rs. ${n.toLocaleString("en-PK")}`;
+}
+
 export default function MatchingStatus({
   bookingType = BOOKING_TYPES.HOUSE_CLEANING,
-  bookingId = "HC-8492",
+  bookingId,
+  bookingApiId,
   schedule,
   onBack,
   onHelp,
   serviceTitle,
   priceLabel,
 }) {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [stepIndex, setStepIndex] = useState(0);
-  const flowStep = FLOW_ORDER[stepIndex] || FLOW_STEPS.MATCHING;
-  const baseConfig =
-    SERVICE_CONFIGS[bookingType] || SERVICE_CONFIGS.houseCleaning;
-  const config = {
-    ...baseConfig,
-    serviceTitle: serviceTitle || baseConfig.serviceTitle,
-    price: priceLabel || baseConfig.price,
-  };
-  const step = config.steps[flowStep];
+  const pollId = String(bookingApiId || bookingId || "").replace(/^#/, "");
+  const [flowStep, setFlowStep] = useState(FLOW_STEPS.MATCHING);
+  const [liveBooking, setLiveBooking] = useState(null);
 
-  const appointment =
-    schedule?.displayTime || schedule?.timeRange || "Today, 2:30 PM";
-  const address = schedule?.address?.line || "Apt 402, Green Pa...";
-  const bookingLabel = String(bookingId).startsWith("#")
-    ? bookingId
-    : `#${bookingId}`;
-  const bottomPad = Math.max(insets.bottom, 16);
+  const serviceConfig = getServiceConfig(bookingType);
 
-  const goPrev = () => {
-    if (stepIndex === 0) {
-      onBack?.();
-      return;
+  const refreshBooking = useCallback(async () => {
+    if (!pollId) return;
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const res = await bookingApi.getById(token, pollId);
+      const booking = res?.booking || res?.data || res;
+      if (!booking || typeof booking !== "object") return;
+
+      setLiveBooking(booking);
+      const assignees = pickAssignees(booking);
+      const hasAssignee = assignees.length > 0;
+      setFlowStep(
+        resolveFlowStep(booking.screen || booking.status, hasAssignee),
+      );
+    } catch (err) {
+      console.log("[MatchingStatus] poll failed:", err?.message || err);
     }
-    setStepIndex((value) => Math.max(0, value - 1));
-  };
+  }, [pollId]);
 
-  const goNext = () => {
-    setStepIndex((value) => Math.min(FLOW_ORDER.length - 1, value + 1));
-  };
+  useEffect(() => {
+    let mounted = true;
+    let timer = null;
+
+    const tick = async () => {
+      if (!mounted) return;
+      await refreshBooking();
+      if (!mounted) return;
+      timer = setTimeout(tick, POLL_MS);
+    };
+
+    tick();
+    return () => {
+      mounted = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [refreshBooking]);
+
+  const liveProvider = useMemo(() => {
+    const assignees = pickAssignees(liveBooking || {});
+    const pro = assignees[0];
+    if (!pro) return null;
+    return {
+      name: pro.fullName || pro.name || null,
+      badge: pro.badge || null,
+      rating: pro.rating != null ? String(pro.rating) : null,
+      vehicle: pro.vehicle || pro.transport || null,
+      avatar: pro.avatar || pro.photo || pro.image || null,
+    };
+  }, [liveBooking]);
+
+  const displayTitle = useMemo(() => {
+    return (
+      liveBooking?.packageSnapshot?.name ||
+      liveBooking?.allocation?.planName ||
+      liveBooking?.category?.name ||
+      serviceTitle ||
+      null
+    );
+  }, [liveBooking, serviceTitle]);
+
+  const displayPrice = useMemo(() => {
+    const fromApi = formatMoney(liveBooking?.pricing?.total);
+    return fromApi || priceLabel || null;
+  }, [liveBooking, priceLabel]);
+
+  const appointment = useMemo(() => {
+    const sched = liveBooking?.schedule || {};
+    return (
+      sched.startTime ||
+      sched.slotLabel ||
+      sched.slot ||
+      schedule?.displayTime ||
+      schedule?.timeRange ||
+      liveBooking?.estimatedArrival ||
+      null
+    );
+  }, [liveBooking, schedule]);
+
+  const address = useMemo(() => {
+    const addr = liveBooking?.address || {};
+    return (
+      addr.line ||
+      addr.addressLine ||
+      [addr.label, addr.area, addr.city].filter(Boolean).join(", ") ||
+      schedule?.address?.line ||
+      null
+    );
+  }, [liveBooking, schedule]);
+
+  const liveTracking = useMemo(
+    () => liveBooking?.tracking || liveBooking?.statusCard?.tracking || null,
+    [liveBooking],
+  );
+
+  const homeCoords = useMemo(() => {
+    const addr = liveBooking?.address || schedule?.address || {};
+    const lat =
+      addr.lat ??
+      addr.latitude ??
+      addr.location?.lat ??
+      (Array.isArray(addr.location?.coordinates)
+        ? addr.location.coordinates[1]
+        : null);
+    const lng =
+      addr.lng ??
+      addr.longitude ??
+      addr.location?.lng ??
+      (Array.isArray(addr.location?.coordinates)
+        ? addr.location.coordinates[0]
+        : null);
+    if (lat == null || lng == null) return null;
+    const la = Number(lat);
+    const ln = Number(lng);
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) return null;
+    return { latitude: la, longitude: ln };
+  }, [liveBooking, schedule]);
+
+  const providerCoords = useMemo(() => {
+    const lat = liveTracking?.lat ?? liveTracking?.latitude;
+    const lng = liveTracking?.lng ?? liveTracking?.longitude;
+    if (lat == null || lng == null) return null;
+    const la = Number(lat);
+    const ln = Number(lng);
+    if (!Number.isFinite(la) || !Number.isFinite(ln)) return null;
+    return { latitude: la, longitude: ln };
+  }, [liveTracking]);
+
+  const hasProviderLocation = providerCoords != null;
+
+  const step = useMemo(
+    () =>
+      buildStepContent({
+        flowStep,
+        role: serviceConfig.role,
+        providerName: liveProvider?.name,
+        statusMessage:
+          liveBooking?.statusMessage ||
+          liveBooking?.message ||
+          null,
+        headline:
+          liveBooking?.headline ||
+          liveBooking?.statusCard?.headline ||
+          liveBooking?.trackingHeadline ||
+          null,
+        tracking: liveTracking,
+      }),
+    [flowStep, liveBooking, liveProvider?.name, liveTracking, serviceConfig.role],
+  );
+
+  const displayRef = liveBooking?.reference || bookingId || pollId || null;
+  const bookingLabel = displayRef
+    ? String(displayRef).startsWith("#")
+      ? String(displayRef)
+      : `#${displayRef}`
+    : "Booking";
+  const bottomPad = Math.max(insets.bottom, 16);
 
   return (
     <ScreenWrapper
@@ -303,7 +547,20 @@ export default function MatchingStatus({
           style={styles.map}
           showLocate
           mode={flowStep}
-          providerName={config.provider?.name?.split(" ")[0] || "Sarah"}
+          home={homeCoords || undefined}
+          provider={providerCoords || undefined}
+          hasProviderLocation={hasProviderLocation}
+          providerLabel={liveProvider?.name?.split(" ")[0] || undefined}
+          minutesAway={
+            liveTracking?.minutesAway != null
+              ? Number(liveTracking.minutesAway)
+              : null
+          }
+          showLocationNotFound={
+            (flowStep === FLOW_STEPS.ASSIGNED ||
+              flowStep === FLOW_STEPS.ON_THE_WAY) &&
+            !hasProviderLocation
+          }
         />
 
         <View style={[styles.topBar, { top: Math.max(insets.top, 8) }]}>
@@ -342,39 +599,6 @@ export default function MatchingStatus({
           </TouchableOpacity>
         </View>
 
-        {/* Temporary flow controls */}
-        <View style={[styles.flowControls, { top: Math.max(insets.top, 8) + 52 }]}>
-          <TouchableOpacity style={styles.flowBtn} onPress={goPrev}>
-            <CustomText
-              label="Back"
-              fontSize={12}
-              fontFamily={fonts.semiBold}
-              color={ACCENT}
-            />
-          </TouchableOpacity>
-          <CustomText
-            label={`${stepIndex + 1}/${FLOW_ORDER.length}`}
-            fontSize={11}
-            fontFamily={fonts.medium}
-            color={MUTED}
-          />
-          <TouchableOpacity
-            style={[
-              styles.flowBtn,
-              stepIndex >= FLOW_ORDER.length - 1 && styles.flowBtnDisabled,
-            ]}
-            onPress={goNext}
-            disabled={stepIndex >= FLOW_ORDER.length - 1}
-          >
-            <CustomText
-              label="Next"
-              fontSize={12}
-              fontFamily={fonts.semiBold}
-              color={stepIndex >= FLOW_ORDER.length - 1 ? MUTED : ACCENT}
-            />
-          </TouchableOpacity>
-        </View>
-
         <View style={styles.bottomStack}>
           <View style={styles.matchingCard}>
             <View style={styles.matchingLeft}>
@@ -409,20 +633,22 @@ export default function MatchingStatus({
                 color={ACCENT}
                 marginBottom={6}
               />
-              <CustomText
-                label={step.subtitle}
-                fontSize={14}
-                lineHeight={20}
-                fontFamily={
-                  flowStep === FLOW_STEPS.MATCHING
-                    ? fonts.semiBold
-                    : fonts.regular
-                }
-                color={
-                  flowStep === FLOW_STEPS.MATCHING ? ACCENT : MUTED
-                }
-                containerStyle={styles.statusSubtitle}
-              />
+              {step.subtitle ? (
+                <CustomText
+                  label={step.subtitle}
+                  fontSize={14}
+                  lineHeight={20}
+                  fontFamily={
+                    flowStep === FLOW_STEPS.MATCHING
+                      ? fonts.semiBold
+                      : fonts.regular
+                  }
+                  color={
+                    flowStep === FLOW_STEPS.MATCHING ? ACCENT : MUTED
+                  }
+                  containerStyle={styles.statusSubtitle}
+                />
+              ) : null}
               {step.note ? (
                 <CustomText
                   label={step.note}
@@ -436,17 +662,33 @@ export default function MatchingStatus({
               ) : null}
             </View>
             <ProgressRing
-              icon={config.serviceIcon}
+              icon={serviceConfig.serviceIcon}
+              iconHasBg={!!serviceConfig.iconHasBg}
               progress={step.progress}
               showSparkles={step.showSparkles}
             />
           </View>
 
           {step.bottom === "profile" ? (
-            <ProviderProfile config={config} bottomPad={bottomPad} />
+            <ProviderProfile
+              provider={liveProvider}
+              chatLabel={serviceConfig.chatLabel}
+              bottomPad={bottomPad}
+              bookingId={bookingLabel}
+              onChat={({ name }) =>
+                router.push({
+                  pathname: "/chat",
+                  params: {
+                    name: name || "",
+                    bookingId: pollId || "",
+                  },
+                })
+              }
+            />
           ) : (
             <ServiceDetails
-              config={config}
+              serviceTitle={displayTitle}
+              price={displayPrice}
               appointment={appointment}
               address={address}
               bottomPad={bottomPad}
@@ -473,27 +715,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     zIndex: 20,
-  },
-  flowControls: {
-    position: "absolute",
-    right: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    zIndex: 25,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderRadius: 16,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  flowBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: "#E8F3EE",
-  },
-  flowBtnDisabled: {
-    backgroundColor: "#EEF1EF",
   },
   roundBtn: {
     width: 40,
@@ -598,16 +819,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   ringIconClip: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     overflow: "hidden",
-    backgroundColor: ACCENT,
-    zIndex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 3,
+    backgroundColor: "transparent",
   },
-  ringIcon: {
-    width: 48,
-    height: 48,
+  ringIconClipSolid: {
+    backgroundColor: ACCENT,
+  },
+  ringIconFilled: {
+    width: 54,
+    height: 54,
+  },
+  ringIconGlyph: {
+    width: 26,
+    height: 26,
+    tintColor: "#FFFFFF",
   },
   ringBg: {
     position: "absolute",
@@ -627,19 +858,19 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 8,
     right: 12,
-    zIndex: 3,
+    zIndex: 4,
   },
   sparkle2: {
     position: "absolute",
     top: 2,
     right: 26,
-    zIndex: 3,
+    zIndex: 4,
   },
   sparkle3: {
     position: "absolute",
     top: 18,
     right: 2,
-    zIndex: 3,
+    zIndex: 4,
   },
   detailsCard: {
     backgroundColor: "#FFFFFF",
@@ -725,6 +956,10 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 26,
     backgroundColor: "#E8F3EE",
+  },
+  avatarPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   verifiedBadge: {
     position: "absolute",

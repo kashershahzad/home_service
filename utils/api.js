@@ -75,16 +75,18 @@ export const authApi = {
 
   getMe: (token) => request("/auth/me", { token }),
 
-  // Postman 12 — Register FCM token (customer)
   registerFcmToken: (token, body) =>
     request("/auth/fcm-token", { method: "PUT", token, body }),
 };
 
 export const homeApi = {
   getHome: (lat, lng, token) =>
-    request(`/home?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`, {
-      token,
-    }),
+    request(
+      `/home?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`,
+      {
+        token,
+      },
+    ),
 };
 
 export const catalogApi = {
@@ -99,7 +101,9 @@ export const catalogApi = {
       `lng=${encodeURIComponent(lng)}`,
     ];
     if (audience) parts.push(`audience=${encodeURIComponent(audience)}`);
-    return request(`/catalog/categories/${encodeURIComponent(slug)}?${parts.join("&")}`);
+    return request(
+      `/catalog/categories/${encodeURIComponent(slug)}?${parts.join("&")}`,
+    );
   },
 };
 
@@ -140,6 +144,13 @@ export const bookingApi = {
       method: "POST",
       token,
       body: { reason },
+    }),
+
+  review: (token, bookingId, body) =>
+    request(`/bookings/${encodeURIComponent(bookingId)}/review`, {
+      method: "POST",
+      token,
+      body,
     }),
 };
 

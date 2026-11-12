@@ -19,8 +19,7 @@ import CustomText from "../components/components/CustomText";
 import LimitedOfferCard from "../components/components/LimitedOfferCard";
 import PopularServiceCard from "../components/components/PopularServiceCard";
 import ScreenWrapper from "../components/components/ScreenWrapper";
-import { POPULAR_SERVICES } from "../constants/popularServices";
-import { catalogApi, getToken, homeApi } from "../utils/api";
+import { addressApi, catalogApi, getToken, homeApi } from "../utils/api";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_GAP = 12;
@@ -68,23 +67,6 @@ function mapCatalogCategories(list = []) {
   });
 }
 
-/** Existing booking UIs — do not open /category list. */
-function getBookingPath(slug, bookingFlow) {
-  const s = String(slug || "").toLowerCase();
-  const flow = String(bookingFlow || "").toLowerCase();
-  if (s === "home-cleaning" || flow === "property" || s.includes("clean")) {
-    return "/booking/propertyBooking";
-  }
-  if (s === "hair-dressing" || s.includes("hair") || s.includes("salon")) {
-    return {
-      pathname: "/booking/bookHaircutService",
-      params: { categorySlug: "hair-dressing" },
-    };
-  }
-  // Other package-style categories still use cleaning wizard until their UI exists
-  return "/booking/propertyBooking";
-}
-
 function mapHomeCategories(list = []) {
   return mapCatalogCategories(list);
 }
@@ -103,6 +85,41 @@ function mapOffer(offer) {
   };
 }
 
+function formatBookAgainDate(raw) {
+  if (!raw) return "";
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return String(raw).slice(0, 10);
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function getRebookPath(item) {
+  const slug = String(
+    item?.categorySlug ||
+      item?.slug ||
+      item?.category?.slug ||
+      item?.service ||
+      item?.categoryName ||
+      item?.title ||
+      "",
+  ).toLowerCase();
+  if (
+    slug.includes("hair") ||
+    slug.includes("salon") ||
+    slug.includes("dress") ||
+    slug.includes("beauty")
+  ) {
+    return {
+      pathname: "/booking/bookHaircutService",
+      params: { categorySlug: "hair-dressing" },
+    };
+  }
+  return "/booking/propertyBooking";
+}
+
 function mapBookAgain(item, index = 0) {
   if (!item) return null;
   const name =
@@ -111,23 +128,49 @@ function mapBookAgain(item, index = 0) {
     item.providerName ||
     item.professional?.name ||
     "Professional";
-  const initials = String(name)
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("") || "HS";
+  const initials =
+    String(name)
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase())
+      .join("") || "HS";
+
+  const dateRaw = item.date || item.completedAt || item.schedule?.date || "";
 
   return {
     id: String(item.id || item._id || index),
     initials,
     name,
     rating: item.rating ?? item.professional?.rating ?? 5,
-    service: item.serviceTitle || item.service || item.categoryName || item.title || "Service",
+    service:
+      item.serviceTitle ||
+      item.service ||
+      item.packageSnapshot?.name ||
+      item.categoryName ||
+      item.title ||
+      "Service",
     status: item.status || "Completed",
-    date: item.date || item.completedAt || item.schedule?.date || "",
+    date: formatBookAgainDate(dateRaw),
+    categorySlug: item.categorySlug || item.category?.slug || item.slug || null,
     raw: item,
   };
+}
+
+function pickSavedAddress(list = []) {
+  if (!Array.isArray(list) || !list.length) return null;
+  return list.find((a) => a.isDefault) || list[0] || null;
+}
+
+/** Display text from change-location /addresses API record. */
+function labelFromAddress(addr) {
+  if (!addr) return null;
+  const line = addr.line || addr.addressLine || addr.address || null;
+  if (line && String(line).trim()) return String(line).trim();
+  const parts = [addr.label, addr.area, addr.city].filter(
+    (p) => p && String(p).trim(),
+  );
+  return parts.length ? parts.join(", ") : null;
 }
 
 function mapPopularFromCategories(categories = []) {
@@ -135,11 +178,16 @@ function mapPopularFromCategories(categories = []) {
     id: c.slug || c.id || `svc-${index}`,
     title: c.name || c.title || c.label || c.slug,
     name: c.name || c.title || "Service",
+    description: c.description || c.subtitle || "",
+    subtitle: c.description || c.subtitle || "",
     price: c.startingPrice ?? c.price ?? "—",
     rating: c.rating ?? 4.8,
     tag: c.tag || "Available",
     tagColor: "popular",
-    image: c.imageUrl || c.image ? { uri: c.imageUrl || c.image } : FALLBACK_IMAGES[index % FALLBACK_IMAGES.length],
+    image:
+      c.imageUrl || c.image
+        ? { uri: c.imageUrl || c.image }
+        : FALLBACK_IMAGES[index % FALLBACK_IMAGES.length],
     slug: c.slug || c.id,
     bookingFlow: c.bookingFlow || null,
   }));
@@ -149,17 +197,13 @@ const home = () => {
   const router = useRouter();
   const user = useSelector((state) => state.users.userData);
 
-  const [selectedCategory, setSelectedCategory] = useState("all");
   const [loading, setLoading] = useState(true);
   const [coords, setCoords] = useState(DEFAULT_COORDS);
-  const [locationLabel, setLocationLabel] = useState("Lahore");
+  const [locationLabel, setLocationLabel] = useState("Set location");
   const [greeting, setGreeting] = useState("");
-  const [categories, setCategories] = useState([
-    { id: "all", label: "All Services", slug: "all", icon: null },
-  ]);
   const [offers, setOffers] = useState([]);
   const [bookAgain, setBookAgain] = useState([]);
-  const [popular, setPopular] = useState(POPULAR_SERVICES);
+  const [popular, setPopular] = useState([]);
 
   const lastFetchAt = useRef(0);
   const inFlight = useRef(false);
@@ -173,10 +217,44 @@ const home = () => {
   }, [greeting, displayName]);
 
   const resolveLocation = useCallback(async () => {
+    // Prefer saved / change-location address API
+    try {
+      const token = await getToken();
+      if (token) {
+        const data = await addressApi.list(token);
+        const list =
+          data?.addresses || data?.data || (Array.isArray(data) ? data : []);
+        const preferred = pickSavedAddress(list);
+        if (preferred) {
+          const lat = Number(preferred.lat ?? preferred.latitude);
+          const lng = Number(preferred.lng ?? preferred.longitude);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            return {
+              lat,
+              lng,
+              label: labelFromAddress(preferred) || "Saved location",
+              addressId: preferred._id || preferred.id || null,
+            };
+          }
+          const label = labelFromAddress(preferred);
+          if (label) {
+            return {
+              ...DEFAULT_COORDS,
+              label,
+              addressId: preferred._id || preferred.id || null,
+            };
+          }
+        }
+      }
+    } catch (err) {
+      console.log("[home] address list failed:", err?.message || err);
+    }
+
+    // Fallback: device GPS
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        return { ...DEFAULT_COORDS, label: "Lahore (default)" };
+        return { ...DEFAULT_COORDS, label: "Set location" };
       }
       const pos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
@@ -185,17 +263,21 @@ const home = () => {
       const lng = pos.coords.longitude;
       let label = "Current location";
       try {
-        const places = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+        const places = await Location.reverseGeocodeAsync({
+          latitude: lat,
+          longitude: lng,
+        });
         const p = places?.[0];
         if (p) {
-          label = [p.district || p.subregion, p.city || p.region]
-            .filter(Boolean)
-            .join(", ") || label;
+          label =
+            [p.district || p.subregion, p.city || p.region]
+              .filter(Boolean)
+              .join(", ") || label;
         }
       } catch (_) {}
       return { lat, lng, label };
     } catch {
-      return { ...DEFAULT_COORDS, label: "Lahore (default)" };
+      return { ...DEFAULT_COORDS, label: "Set location" };
     }
   }, []);
 
@@ -203,7 +285,11 @@ const home = () => {
     async ({ force = false } = {}) => {
       if (inFlight.current) return;
       const now = Date.now();
-      if (!force && lastFetchAt.current && now - lastFetchAt.current < HOME_CACHE_MS) {
+      if (
+        !force &&
+        lastFetchAt.current &&
+        now - lastFetchAt.current < HOME_CACHE_MS
+      ) {
         setLoading(false);
         return;
       }
@@ -225,7 +311,10 @@ const home = () => {
               })
             : Promise.resolve(null),
           catalogApi.getCategories(loc.lat, loc.lng).catch((err) => {
-            console.log("[home] GET /catalog/categories failed:", err?.message || err);
+            console.log(
+              "[home] GET /catalog/categories failed:",
+              err?.message || err,
+            );
             return null;
           }),
         ]);
@@ -238,11 +327,6 @@ const home = () => {
           homeRes?.categories || homeRes?.data?.categories || [],
         );
         const mergedCats = catalogCats.length ? catalogCats : homeCats;
-        setCategories([
-          { id: "all", label: "All Services", slug: "all", icon: null },
-          ...mergedCats,
-        ]);
-
         if (homeRes) {
           if (typeof homeRes.greeting === "string" && homeRes.greeting.trim()) {
             setGreeting(homeRes.greeting);
@@ -274,21 +358,28 @@ const home = () => {
                 id: item.id || item._id || `p-${index}`,
                 title: item.title || item.name || "Service",
                 name: item.name || item.providerName || item.title || "Service",
+                description: item.description || item.subtitle || "",
+                subtitle: item.description || item.subtitle || "",
                 price: item.price ?? item.startingPrice ?? "—",
                 rating: item.rating ?? 4.8,
                 tag: item.tag || "Popular",
                 tagColor: item.tagColor || "popular",
-                image: item.image || item.imageUrl
-                  ? { uri: item.image || item.imageUrl }
-                  : FALLBACK_IMAGES[index % FALLBACK_IMAGES.length],
+                image:
+                  item.image || item.imageUrl
+                    ? { uri: item.image || item.imageUrl }
+                    : FALLBACK_IMAGES[index % FALLBACK_IMAGES.length],
                 slug: item.slug || item.categorySlug,
               })),
             );
           } else if (mergedCats.length) {
-            setPopular(mapPopularFromCategories(mergedCats.map((c) => c.raw || c)));
+            setPopular(
+              mapPopularFromCategories(mergedCats.map((c) => c.raw || c)),
+            );
           }
         } else if (mergedCats.length) {
-          setPopular(mapPopularFromCategories(mergedCats.map((c) => c.raw || c)));
+          setPopular(
+            mapPopularFromCategories(mergedCats.map((c) => c.raw || c)),
+          );
         }
 
         lastFetchAt.current = Date.now();
@@ -302,62 +393,38 @@ const home = () => {
 
   useFocusEffect(
     useCallback(() => {
-      loadHomeData();
+      // Always refresh location label from change-location addresses API
+      loadHomeData({ force: true });
     }, [loadHomeData]),
   );
 
-  const filteredPopular = useMemo(() => {
-    if (selectedCategory === "all") return popular;
-    return popular.filter((item) => {
-      const slug = String(item.slug || item.id || "").toLowerCase();
-      const title = String(item.title || item.name || "").toLowerCase();
-      const selected = String(selectedCategory).toLowerCase();
-      return slug.includes(selected) || title.includes(selected.replace(/-/g, " "));
-    });
-  }, [popular, selectedCategory]);
-
   const activeOffer = offers[0] || null;
 
-  const openServiceBooking = (item) => {
-    const target = getBookingPath(item?.slug || item?.id, item?.bookingFlow);
-    router.push(target);
-  };
-
-  const renderCategory = ({ item }) => {
-    const isSelected = selectedCategory === item.id;
-
-    return (
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => {
-          setSelectedCategory(item.id);
-          // All Services = filter only. Specific service = existing booking flow.
-          if (item.slug && item.slug !== "all") {
-            openServiceBooking(item);
-          }
-        }}
-        style={[
-          styles.categoryChip,
-          isSelected ? styles.categoryChipActive : styles.categoryChipInactive,
-        ]}
-      >
-        {item.icon ? (
-          <Image
-            source={item.icon}
-            style={[
-              styles.categoryIcon,
-              isSelected && styles.categoryIconActive,
-            ]}
-          />
-        ) : null}
-        <CustomText
-          label={item.label}
-          fontSize={12}
-          fontFamily={fonts.semiBold}
-          color={isSelected ? "#FFFFFF" : "#455D55"}
-        />
-      </TouchableOpacity>
-    );
+  const openServiceDetail = (item) => {
+    const id = String(item?.id || item?.slug || item?._id || "");
+    if (!id) return;
+    const imageUri =
+      typeof item?.image === "string"
+        ? item.image
+        : item?.image?.uri || item?.imageUrl || "";
+    router.push({
+      pathname: `/service/${encodeURIComponent(id)}`,
+      params: {
+        id,
+        title: item?.title || item?.label || item?.name || "Service",
+        name: item?.name || item?.title || item?.label || "Service",
+        price:
+          item?.price != null && item?.price !== "—" ? String(item.price) : "",
+        image: imageUri,
+        slug: item?.slug || id,
+        bookingFlow: item?.bookingFlow || "",
+        category: item?.category || item?.label || item?.title || "",
+        rating: item?.rating != null ? String(item.rating) : "",
+        tag: item?.tag || "",
+        subtitle: item?.description || item?.subtitle || "",
+        description: item?.description || item?.subtitle || "",
+      },
+    });
   };
 
   const renderPopularService = ({ item }) => (
@@ -370,7 +437,7 @@ const home = () => {
             : Number(item.price).toLocaleString("en-PK"),
       }}
       style={{ width: CARD_WIDTH }}
-      onPress={() => openServiceBooking(item)}
+      onPress={() => openServiceDetail(item)}
     />
   );
 
@@ -386,7 +453,7 @@ const home = () => {
         <TouchableOpacity
           activeOpacity={0.8}
           style={styles.locationContainer}
-          onPress={() => loadHomeData({ force: true })}
+          onPress={() => router.push("/change-address")}
         >
           <Image
             source={images.locationIcon}
@@ -396,6 +463,9 @@ const home = () => {
             label={locationLabel}
             fontSize={12}
             fontFamily={fonts.bold}
+            numberOfLines={1}
+            removeTranslation
+            containerStyle={{ flexShrink: 1 }}
           />
           <Image source={images.downarrow} style={{ width: 7, height: 4 }} />
         </TouchableOpacity>
@@ -438,107 +508,109 @@ const home = () => {
       </View>
 
       {loading ? (
-        <ActivityIndicator
-          color="#0E6E4C"
-          style={{ marginTop: 28, marginBottom: 10 }}
-        />
-      ) : (
-        <FlatList
-          data={categories}
-          keyExtractor={(item) => item.id}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          renderItem={renderCategory}
-          contentContainerStyle={styles.categoryList}
-          style={styles.categoryListContainer}
-        />
-      )}
-
-      <View style={styles.sectionHeader}>
-        <CustomText
-          label="Popular Services"
-          fontSize={15}
-          fontFamily={fonts.extraBold}
-          color="#14332C"
-        />
-        <TouchableOpacity
-          activeOpacity={0.7}
-          style={styles.viewAllRow}
-          onPress={() => router.push("/popular-services")}
-        >
+        <View style={styles.loaderWrap}>
+          <ActivityIndicator size="large" color="#0E6E4C" />
           <CustomText
-            label="View all"
-            fontSize={12}
-            fontFamily={fonts.bold}
-            color="#0E6E4C"
-          />
-          <Image source={images.rightarrow} style={styles.rightArrow} />
-        </TouchableOpacity>
-      </View>
-
-      {!loading && filteredPopular.length === 0 ? (
-        <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
-          <CustomText
-            label="No services available in your area yet."
+            label="Loading services..."
+            removeTranslation
             fontSize={13}
             fontFamily={fonts.medium}
             color="#668178"
+            marginTop={12}
+            textAlign="center"
           />
         </View>
       ) : (
-        <FlatList
-          data={filteredPopular}
-          keyExtractor={(item) => String(item.id)}
-          numColumns={2}
-          scrollEnabled={false}
-          renderItem={renderPopularService}
-          columnWrapperStyle={styles.cardRow}
-          contentContainerStyle={styles.cardList}
-        />
+        <>
+          <View style={styles.sectionHeader}>
+            <CustomText
+              label="Popular Services"
+              fontSize={15}
+              fontFamily={fonts.extraBold}
+              color="#14332C"
+            />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.viewAllRow}
+              onPress={() => router.push("/popular-services")}
+            >
+              <CustomText
+                label="View all"
+                fontSize={12}
+                fontFamily={fonts.bold}
+                color="#0E6E4C"
+              />
+              <Image source={images.rightarrow} style={styles.rightArrow} />
+            </TouchableOpacity>
+          </View>
+
+          {popular.length === 0 ? (
+            <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
+              <CustomText
+                label="No services available in your area yet."
+                fontSize={13}
+                fontFamily={fonts.medium}
+                color="#668178"
+              />
+            </View>
+          ) : (
+            <FlatList
+              data={popular}
+              keyExtractor={(item) => String(item.id)}
+              numColumns={2}
+              scrollEnabled={false}
+              renderItem={renderPopularService}
+              columnWrapperStyle={styles.cardRow}
+              contentContainerStyle={styles.cardList}
+            />
+          )}
+
+          {activeOffer ? (
+            <View style={styles.offerWrap}>
+              <LimitedOfferCard
+                discount={activeOffer.discount}
+                subtitle={activeOffer.subtitle}
+                buttonLabel="Claim Offer"
+                onPress={() => router.push("/special-offers")}
+              />
+            </View>
+          ) : null}
+
+          {bookAgain.length > 0 ? (
+            <>
+              <View style={styles.sectionHeader}>
+                <CustomText
+                  label="Book Again"
+                  fontSize={15}
+                  fontFamily={fonts.extraBold}
+                  color="#14332C"
+                />
+                <TouchableOpacity activeOpacity={0.7} style={styles.viewAllRow}>
+                  <CustomText
+                    label="Recent Activity"
+                    fontSize={12}
+                    fontFamily={fonts.bold}
+                    color="#668178"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.bookAgainList}>
+                {bookAgain.map((item) => (
+                  <BookAgainCard
+                    key={item.id}
+                    item={item}
+                    onRebook={() => {
+                      const target = getRebookPath(item.raw || item);
+                      router.push(target);
+                    }}
+                  />
+                ))}
+              </View>
+            </>
+          ) : null}
+        </>
       )}
-
-      {activeOffer ? (
-        <View style={styles.offerWrap}>
-          <LimitedOfferCard
-            discount={activeOffer.discount}
-            subtitle={activeOffer.subtitle}
-            buttonLabel="Claim Offer"
-            onPress={() => router.push("/special-offers")}
-          />
-        </View>
-      ) : null}
-
-      <View style={styles.sectionHeader}>
-        <CustomText
-          label="Book Again"
-          fontSize={15}
-          fontFamily={fonts.extraBold}
-          color="#14332C"
-        />
-        <TouchableOpacity activeOpacity={0.7} style={styles.viewAllRow}>
-          <CustomText
-            label="Recent Activity"
-            fontSize={12}
-            fontFamily={fonts.bold}
-            color="#668178"
-          />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.bookAgainList}>
-        {bookAgain.length === 0 ? (
-          <CustomText
-            label="No past bookings yet."
-            fontSize={13}
-            fontFamily={fonts.medium}
-            color="#668178"
-          />
-        ) : (
-          bookAgain.map((item) => (
-            <BookAgainCard key={item.id} item={item} />
-          ))
-        )}
-      </View>
     </ScreenWrapper>
   );
 };
@@ -554,6 +626,12 @@ const styles = StyleSheet.create({
   },
   contentPadding: {
     paddingHorizontal: 16,
+  },
+  loaderWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 80,
+    paddingHorizontal: 24,
   },
   locationContainer: {
     flexDirection: "row",
@@ -618,7 +696,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    marginTop: 10,
+    marginTop: 20,
   },
   bookAgainList: {
     paddingHorizontal: 16,

@@ -13,7 +13,6 @@ const TABS = [
     icon: images.bookingtab,
     route: "/bookings",
   },
-  { key: "wallet", label: "Wallet", icon: images.wallettab, route: "/wallet" },
   {
     key: "profile",
     label: "Profile",

@@ -121,5 +121,6 @@ export const images = {
   radar: require("./radar.png"),
   service: require("./service.png"),
   verified: require("./verified.png"),
+  successful: require("./sucessful.png"),
   bookings: require("./bookings.png"),
 };

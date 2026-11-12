@@ -27,10 +27,10 @@ const COLORS = {
 
 const HIT_SLOP = { top: 14, bottom: 14, left: 14, right: 14 };
 
-const HISTORY_FILTERS = ["All", "Upcoming", "Completed", "Cancelled"];
+const HISTORY_FILTERS = ["All", "Booked", "Completed", "Cancelled"];
 
 const STATUS_STYLES = {
-  Upcoming: { bg: "#F1E7FF", color: "#7310FF" },
+  Booked: { bg: "#E8F5EF", color: "#0E6E4C" },
   Completed: { bg: "#E6FBEF", color: "#2ECC71" },
   Cancelled: { bg: "#FFECEC", color: "#FF3B30" },
 };
@@ -165,7 +165,7 @@ export default function BookingsHistoryScreen() {
         ) : (
           filtered.map((item) => {
             const statusStyle =
-              STATUS_STYLES[item.status] || STATUS_STYLES.Upcoming;
+              STATUS_STYLES[item.status] || STATUS_STYLES.Booked;
             return (
               <TouchableOpacity
                 key={item.id}
@@ -173,7 +173,7 @@ export default function BookingsHistoryScreen() {
                 activeOpacity={0.85}
                 onPress={() =>
                   router.push({
-                    pathname: "/booking-details",
+                    pathname: "/booking-view",
                     params: {
                       id: item.id,
                       title: item.title,
@@ -185,7 +185,6 @@ export default function BookingsHistoryScreen() {
                       dateLabel: item.date,
                       startTime: item.time,
                       reference: item.reference || "",
-                      mode: "view",
                     },
                   })
                 }

@@ -13,8 +13,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { MapView, Marker, PROVIDER_GOOGLE } from "./Map";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { addressApi, getToken } from "../utils/api";
+import { MapView, Marker, PROVIDER_GOOGLE } from "./Map";
 
 const ACCENT = "#0E6E4C";
 const DEFAULT_REGION = {
@@ -50,6 +51,7 @@ export default function ChangeAddressForm({
   accent = ACCENT,
   title = "Change Address",
 }) {
+  const insets = useSafeAreaInsets();
   const mapRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -168,9 +170,7 @@ export default function ChangeAddressForm({
         }
         const data = await addressApi.list(token);
         const list =
-          data?.addresses ||
-          data?.data ||
-          (Array.isArray(data) ? data : []);
+          data?.addresses || data?.data || (Array.isArray(data) ? data : []);
         const preferred =
           list.find((a) => a.isDefault) ||
           list.find(
@@ -336,7 +336,10 @@ export default function ChangeAddressForm({
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.bottomCard}
+        style={[
+          styles.bottomCard,
+          { paddingBottom: Math.max(insets.bottom, 16) + 16 },
+        ]}
       >
         <Text style={styles.sectionLabel}>Selected Location</Text>
 
@@ -455,7 +458,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 18,
-    paddingBottom: Platform.OS === "ios" ? 34 : 20,
     elevation: 10,
     shadowColor: "#000",
     shadowOpacity: 0.1,
@@ -512,6 +514,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     paddingVertical: 16,
     alignItems: "center",
+    marginBottom: 20,
   },
   primaryButtonDisabled: { opacity: 0.55 },
   primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },

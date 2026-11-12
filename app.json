@@ -9,6 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
+      "bundleIdentifier": "pk.com.homely.app",
       "supportsTablet": true,
       "infoPlist": {
         "NSFaceIDUsageDescription": "We use Face ID to securely verify your identity",

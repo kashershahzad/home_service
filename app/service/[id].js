@@ -55,8 +55,66 @@ function timeAgo(dateString) {
   return `${weeks} ${weeks === 1 ? "week" : "weeks"} ago`;
 }
 
+function buildProviderFromParams(params = {}) {
+  const id = String(params.id || "").trim();
+  const title = String(params.title || "").trim();
+  const name = String(params.name || "").trim();
+  if (!id && !title && !name) return null;
+  const priceRaw = params.price;
+  const price =
+    priceRaw != null && String(priceRaw).trim() !== ""
+      ? String(priceRaw)
+      : "—";
+  return {
+    _id: id || title || name,
+    id: id || title || name,
+    title: title || name || "Service",
+    name: name || title || "Service",
+    price,
+    image: params.image || null,
+    category: params.category || params.slug || "",
+    slug: params.slug || id || "",
+    bookingFlow: params.bookingFlow || "",
+    rating: params.rating ? Number(params.rating) : 4.8,
+    reviewsCount: 0,
+    tag: params.tag || "Available",
+    subtitle: params.subtitle || "",
+    location: "",
+    about:
+      params.about ||
+      `Book ${title || name || "this service"} at your doorstep. Tap Book Now to continue.`,
+    photos: params.image ? [params.image] : [],
+  };
+}
+
+function getBookingPathFromProvider(provider) {
+  const slug = String(provider?.slug || provider?.category || "").toLowerCase();
+  const flow = String(provider?.bookingFlow || "").toLowerCase();
+  const title = String(provider?.title || "").toLowerCase();
+  const category = String(provider?.category || "").toLowerCase();
+  const blob = `${slug} ${flow} ${title} ${category}`;
+
+  if (
+    flow === "property" ||
+    slug === "home-cleaning" ||
+    blob.includes("clean")
+  ) {
+    return "/booking/propertyBooking";
+  }
+  if (
+    slug === "hair-dressing" ||
+    blob.includes("hair") ||
+    blob.includes("salon") ||
+    blob.includes("dressing")
+  ) {
+    return "/booking/bookHaircutService";
+  }
+  return "/booking/propertyBooking";
+}
+
 export default function ServiceDetailScreen() {
-  const { id } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
   const { bookmarkedList, toggleBookmark } = useBookmarks();
 
@@ -157,65 +215,110 @@ export default function ServiceDetailScreen() {
     ? bookmarkedList.some((b) => b._id === provider._id)
     : false;
 
+  const paramSlug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
+  const paramBookingFlow = Array.isArray(params.bookingFlow)
+    ? params.bookingFlow[0]
+    : params.bookingFlow;
+  const paramTitle = Array.isArray(params.title) ? params.title[0] : params.title;
+  const paramName = Array.isArray(params.name) ? params.name[0] : params.name;
+  const paramPrice = Array.isArray(params.price) ? params.price[0] : params.price;
+  const paramImage = Array.isArray(params.image) ? params.image[0] : params.image;
+  const paramCategory = Array.isArray(params.category)
+    ? params.category[0]
+    : params.category;
+  const paramRating = Array.isArray(params.rating)
+    ? params.rating[0]
+    : params.rating;
+  const paramTag = Array.isArray(params.tag) ? params.tag[0] : params.tag;
+  const paramSubtitle = Array.isArray(params.subtitle)
+    ? params.subtitle[0]
+    : params.subtitle;
+
   const fetchDetail = useCallback(async () => {
+    const routeParams = {
+      id,
+      slug: paramSlug,
+      bookingFlow: paramBookingFlow,
+      title: paramTitle,
+      name: paramName,
+      price: paramPrice,
+      image: paramImage,
+      category: paramCategory,
+      rating: paramRating,
+      tag: paramTag,
+      subtitle: paramSubtitle,
+    };
+
     try {
       setLoading(true);
       setError(null);
 
       const localService = getPopularServiceById(id);
       if (localService) {
-        setProvider(localService);
+        setProvider({
+          ...localService,
+          slug: paramSlug || localService.slug,
+          bookingFlow: paramBookingFlow || localService.bookingFlow,
+        });
         setReviews([]);
         return;
       }
 
-      const res = await fetch(`${BASE_URL}/services/${id}`, {
+      if (!id) throw new Error("Missing service id");
+
+      const res = await fetch(`${BASE_URL}/services/${encodeURIComponent(id)}`, {
         headers: { "ngrok-skip-browser-warning": "true" },
       });
       if (!res.ok) throw new Error("Failed to load service");
       const data = await res.json();
-      setProvider(data.provider);
+      const apiProvider = data.provider || data.service || data.data || data;
+      setProvider({
+        ...apiProvider,
+        slug: apiProvider.slug || paramSlug || id,
+        bookingFlow: apiProvider.bookingFlow || paramBookingFlow || "",
+      });
       setReviews(data.reviews || []);
     } catch (e) {
-      setError(e.message);
+      const fallback = buildProviderFromParams(routeParams);
+      if (fallback) {
+        setProvider(fallback);
+        setReviews([]);
+        setError(null);
+      } else {
+        setError(e.message);
+      }
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [
+    id,
+    paramSlug,
+    paramBookingFlow,
+    paramTitle,
+    paramName,
+    paramPrice,
+    paramImage,
+    paramCategory,
+    paramRating,
+    paramTag,
+    paramSubtitle,
+  ]);
 
   useEffect(() => {
-    if (id) fetchDetail();
-  }, [id, fetchDetail]);
+    if (id || paramTitle || paramName) fetchDetail();
+  }, [id, paramTitle, paramName, fetchDetail]);
+
   const handleBookNow = () => {
     if (!provider) return;
+    const pathname = getBookingPathFromProvider(provider);
     const bookingParams = {
       id: provider._id || provider.id,
       title: provider.title,
       name: provider.name,
-      price: String(provider.price),
+      price: String(provider.price ?? ""),
       image: toImageUri(provider.image),
+      categorySlug: provider.slug || "",
     };
-    const title = String(provider.title || "").toLowerCase();
-    const category = String(provider.category || "").toLowerCase();
-    const isHouseCleaning =
-      category === "cleaning" ||
-      category.includes("house cleaning") ||
-      category.includes("cleaning") ||
-      title.includes("house cleaning") ||
-      title.includes("home cleaning");
-    const isHairDressing =
-      category.includes("hair") ||
-      category.includes("salon") ||
-      title.includes("hair") ||
-      title.includes("dressing") ||
-      title.includes("salon");
-
-    let pathname = "/booking-details";
-    if (isHairDressing) {
-      pathname = "/booking/bookHaircutService";
-    } else if (isHouseCleaning) {
-      pathname = "/booking/propertyBooking";
-    }
 
     router.push({
       pathname,

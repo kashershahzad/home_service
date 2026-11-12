@@ -30,6 +30,7 @@ export default function BookingLayout() {
   const [extrasData, setExtrasData] = useState(null);
   const [schedule, setSchedule] = useState(null);
   const [bookingId, setBookingId] = useState("HC-8492");
+  const [bookingApiId, setBookingApiId] = useState(null);
   const [bookingTotal, setBookingTotal] = useState(null);
 
   const [catalog, setCatalog] = useState(null);
@@ -81,9 +82,10 @@ export default function BookingLayout() {
       <MatchingStatus
         bookingType={bookingType}
         bookingId={bookingId}
+        bookingApiId={bookingApiId || bookingId}
         schedule={schedule}
         priceLabel={priceLabel}
-        onBack={() => setStep(5)}
+        onBack={() => router.replace("/home")}
       />
     );
   }
@@ -96,8 +98,9 @@ export default function BookingLayout() {
         schedule={schedule}
         onBack={() => setStep(4)}
         onEditSchedule={() => setStep(4)}
-        onBooked={({ bookingId: id, total }) => {
+        onBooked={({ bookingId: id, bookingApiId: apiId, total }) => {
           setBookingId(id);
+          setBookingApiId(apiId || id);
           setBookingTotal(total);
           setStep(6);
         }}

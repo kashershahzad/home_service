@@ -24,6 +24,7 @@ const TAG_STYLES = {
 
 const PopularServiceCard = ({ item, onPress, style }) => {
   const tagStyle = TAG_STYLES[item.tagColor] || TAG_STYLES.popular;
+  const description = item.description || item.subtitle || "";
 
   return (
     <TouchableOpacity
@@ -40,6 +41,7 @@ const PopularServiceCard = ({ item, onPress, style }) => {
             fontSize={10}
             fontFamily={fonts.bold}
             color="#065F46"
+            removeTranslation
           />
         </View>
         <View
@@ -53,6 +55,7 @@ const PopularServiceCard = ({ item, onPress, style }) => {
             fontSize={10}
             fontFamily={fonts.semiBold}
             color={tagStyle.color}
+            removeTranslation
           />
         </View>
       </View>
@@ -63,14 +66,20 @@ const PopularServiceCard = ({ item, onPress, style }) => {
           fontSize={14}
           fontFamily={fonts.extraBold}
           color="#14332C"
+          numberOfLines={1}
+          removeTranslation
         />
-        <CustomText
-          label={item.subtitle}
-          fontSize={11}
-          fontFamily={fonts.medium}
-          color="#637C75"
-          marginTop={2}
-        />
+        {description ? (
+          <CustomText
+            label={description}
+            fontSize={11}
+            fontFamily={fonts.medium}
+            color="#637C75"
+            marginTop={2}
+            numberOfLines={1}
+            removeTranslation
+          />
+        ) : null}
 
         <View style={styles.divider} />
 

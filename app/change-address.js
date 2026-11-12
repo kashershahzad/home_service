@@ -16,7 +16,13 @@ export default function ChangeAddressScreen() {
         onCancel={goBack}
         onSaved={() => {
           Alert.alert("Saved", "Your address has been updated.", [
-            { text: "OK", onPress: goBack },
+            {
+              text: "OK",
+              onPress: () =>
+                router.canGoBack()
+                  ? router.back()
+                  : router.replace("/home"),
+            },
           ]);
         }}
       />

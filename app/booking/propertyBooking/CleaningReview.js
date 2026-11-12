@@ -83,14 +83,15 @@ export default function CleaningReview({
         markPaid: true,
       });
 
-      const bookingId =
+      const apiId = booking?.id || booking?._id || null;
+      const reference =
         booking?.reference ||
-        booking?.id ||
-        booking?._id ||
+        apiId ||
         `HC-${Math.floor(1000 + Math.random() * 9000)}`;
 
       onBooked?.({
-        bookingId: String(bookingId).replace(/^#/, ""),
+        bookingId: String(reference).replace(/^#/, ""),
+        bookingApiId: apiId ? String(apiId).replace(/^#/, "") : null,
         booking,
         total: booking?.pricing?.total ?? quotePricing?.total,
       });

@@ -27,13 +27,11 @@ export default function HaircutConfirmedBooking() {
     <MatchingStatus
       bookingType={BOOKING_TYPES.HAIR_DRYER}
       bookingId={String(params.bookingId || "HS-0000")}
+      bookingApiId={String(params.bookingApiId || params.bookingId || "HS-0000")}
       schedule={schedule}
       serviceTitle={params.packageTitle || "Hair Dressing"}
       priceLabel={formatPrice(params.total)}
-      onBack={() => {
-        if (router.canGoBack()) router.back();
-        else router.replace("/home");
-      }}
+      onBack={() => router.replace("/home")}
     />
   );
 }

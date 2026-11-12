@@ -21,8 +21,8 @@ import { clearUserData, setUserData } from "../store/reducer/usersSlice";
 import { authApi, deleteToken, getToken } from "../utils/api";
 
 const COLORS = {
-  primary: "#7310FF",
-  primarySoft: "#F1E7FF",
+  primary: "#064E3B",
+  primarySoft: "#E8F6EF",
   bg: "#F6FAF8",
   card: "#FFFFFF",
   text: "#000000",
@@ -47,8 +47,8 @@ const MENU_ITEMS = [
     key: "edit",
     label: "Edit Profile",
     icon: "person-outline",
-    color: "#7310FF",
-    bg: "#F1E7FF",
+    color: "#064E3B",
+    bg: "#E8F6EF",
     route: "/edit-profile",
   },
   {

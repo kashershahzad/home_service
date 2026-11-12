@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import { Platform, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { WebView } from "react-native-webview";
 import Icons from "../../../../components/components/Icons";
 import {
@@ -8,30 +8,44 @@ import {
 } from "./markerIcons";
 import { FLOW_STEPS } from "./serviceConfigs";
 
-const STATIC_HOME = {
-  latitude: 31.4187,
-  longitude: 73.079,
+const FALLBACK_HOME = {
+  latitude: 31.52,
+  longitude: 74.35,
 };
 
-const STATIC_START = {
-  latitude: 31.4285,
-  longitude: 73.0685,
-};
-
-const STATIC_CURRENT = {
-  latitude: 31.4232,
-  longitude: 73.0742,
-};
-
-// homeicon.png 224x231 — circle on top, "Your Home" label below; hotspot = circle center
+// homeicon.png — circle on top, "Your Home" label below
 const HOME_MARKER = { w: 56, h: 58, ax: 28, ay: 24 };
-// cleanericon.png 363x279 — status pill on top, green circle below; hotspot = circle center
-const CLEANER_MARKER = { w: 72, h: 56, ax: 36, ay: 38 };
+// provider marker
+const PROVIDER_MARKER = { w: 72, h: 56, ax: 36, ay: 38 };
 
-function buildMapHtml({ mode, home, start, current }) {
+function isValidCoord(lat, lng) {
+  const la = Number(lat);
+  const ln = Number(lng);
+  return (
+    Number.isFinite(la) &&
+    Number.isFinite(ln) &&
+    Math.abs(la) <= 90 &&
+    Math.abs(ln) <= 180
+  );
+}
+
+function buildMapHtml({
+  mode,
+  home,
+  provider,
+  hasProviderLocation,
+  providerLabel,
+  minutesAway,
+}) {
   const isMatching = mode === FLOW_STEPS.MATCHING;
-  const isOnWay = mode === FLOW_STEPS.ON_THE_WAY;
-  const cleaner = isOnWay ? current : start;
+  const labelText =
+    providerLabel && minutesAway != null
+      ? `${providerLabel} - ${minutesAway} mins away`
+      : providerLabel
+        ? String(providerLabel)
+        : minutesAway != null
+          ? `${minutesAway} mins away`
+          : "";
 
   return `<!DOCTYPE html>
 <html>
@@ -49,15 +63,6 @@ function buildMapHtml({ mode, home, start, current }) {
     .leaflet-div-icon {
       background: transparent !important;
       border: none !important;
-    }
-    .mk.soft {
-      position: relative;
-      width: 14px;
-      height: 14px;
-    }
-    .pin.soft {
-      width: 14px; height: 14px; border-radius: 7px; background: #0E6E4C;
-      opacity: 0.5;
     }
     .rings-wrap {
       position: relative;
@@ -81,18 +86,31 @@ function buildMapHtml({ mode, home, start, current }) {
       0% { transform: scale(0.75); opacity: 0.85; }
       100% { transform: scale(1.2); opacity: 0; }
     }
+    .eta-label {
+      background: #14332C;
+      color: #fff;
+      font: 600 11px -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 4px 8px;
+      border-radius: 8px;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
   <script>
     var home = [${home.latitude}, ${home.longitude}];
-    var start = [${start.latitude}, ${start.longitude}];
-    var current = [${current.latitude}, ${current.longitude}];
-    var cleaner = [${cleaner.latitude}, ${cleaner.longitude}];
+    var provider = ${
+      hasProviderLocation
+        ? `[${provider.latitude}, ${provider.longitude}]`
+        : "null"
+    };
     var mode = ${JSON.stringify(mode)};
+    var hasProviderLocation = ${hasProviderLocation ? "true" : "false"};
+    var labelText = ${JSON.stringify(labelText)};
     var homeIconUrl = ${JSON.stringify(HOME_ICON_DATA_URI)};
-    var cleanerIconUrl = ${JSON.stringify(CLEANER_ICON_DATA_URI)};
+    var providerIconUrl = ${JSON.stringify(CLEANER_ICON_DATA_URI)};
 
     var map = L.map('map', {
       zoomControl: false,
@@ -121,13 +139,13 @@ function buildMapHtml({ mode, home, start, current }) {
       return L.marker(latlng, { icon: icon, interactive: false }).addTo(map);
     }
 
-    function makeDivMarker(latlng, html, size) {
+    function makeDivMarker(latlng, html, size, anchorY) {
       var half = size / 2;
       var icon = L.divIcon({
         className: 'leaflet-div-icon',
         html: html,
         iconSize: [size, size],
-        iconAnchor: [half, half]
+        iconAnchor: [half, anchorY != null ? anchorY : half]
       });
       return L.marker(latlng, { icon: icon, interactive: false }).addTo(map);
     }
@@ -143,47 +161,33 @@ function buildMapHtml({ mode, home, start, current }) {
       ax: ${HOME_MARKER.ax}, ay: ${HOME_MARKER.ay}
     });
 
-    if (mode !== ${JSON.stringify(FLOW_STEPS.MATCHING)}) {
-      var route = [
-        start,
-        [${(start.latitude + home.latitude) / 2 + 0.001}, ${(start.longitude + home.longitude) / 2 - 0.001}],
-        [${(start.latitude + home.latitude) / 2 - 0.0005}, ${(start.longitude + home.longitude) / 2 + 0.002}],
-        home
-      ];
-
-      L.polyline(route, {
+    if (hasProviderLocation && provider) {
+      L.polyline([provider, home], {
         color: '#0E6E4C',
         weight: 5,
-        opacity: mode === ${JSON.stringify(FLOW_STEPS.ON_THE_WAY)} ? 0.25 : 0.95,
+        opacity: 0.95,
         lineCap: 'round',
         lineJoin: 'round'
       }).addTo(map);
 
-      if (mode === ${JSON.stringify(FLOW_STEPS.ON_THE_WAY)}) {
-        L.polyline([
-          current,
-          [${(current.latitude + home.latitude) / 2}, ${(current.longitude + home.longitude) / 2}],
-          home
-        ], {
-          color: '#0E6E4C',
-          weight: 5,
-          opacity: 0.95,
-          lineCap: 'round',
-          lineJoin: 'round'
-        }).addTo(map);
-
-        makeDivMarker(start, '<div class="mk soft"><div class="pin soft"></div></div>', 14);
-      }
-
-      makeImageMarker(cleaner, cleanerIconUrl, {
-        w: ${CLEANER_MARKER.w}, h: ${CLEANER_MARKER.h},
-        ax: ${CLEANER_MARKER.ax}, ay: ${CLEANER_MARKER.ay}
+      makeImageMarker(provider, providerIconUrl, {
+        w: ${PROVIDER_MARKER.w}, h: ${PROVIDER_MARKER.h},
+        ax: ${PROVIDER_MARKER.ax}, ay: ${PROVIDER_MARKER.ay}
       });
+
+      if (labelText) {
+        makeDivMarker(
+          provider,
+          '<div class="eta-label">' + labelText + '</div>',
+          140,
+          70
+        );
+      }
 
       setTimeout(function () {
         map.invalidateSize(true);
-        map.fitBounds(L.latLngBounds([home, start, cleaner]), {
-          padding: [70, 70],
+        map.fitBounds(L.latLngBounds([home, provider]), {
+          padding: [80, 80],
           maxZoom: 15,
           animate: false
         });
@@ -197,14 +201,14 @@ function buildMapHtml({ mode, home, start, current }) {
 
     window.fitRoute = function () {
       map.invalidateSize(true);
-      if (mode === ${JSON.stringify(FLOW_STEPS.MATCHING)}) {
-        map.setView(home, 15, { animate: true });
-      } else {
-        map.fitBounds(L.latLngBounds([home, start, cleaner]), {
-          padding: [70, 70],
+      if (hasProviderLocation && provider) {
+        map.fitBounds(L.latLngBounds([home, provider]), {
+          padding: [80, 80],
           maxZoom: 15,
           animate: true
         });
+      } else {
+        map.setView(home, 15, { animate: true });
       }
     };
 
@@ -218,23 +222,58 @@ function buildMapHtml({ mode, home, start, current }) {
 
 export default function TrackingMap({
   mode = FLOW_STEPS.MATCHING,
-  home = STATIC_HOME,
-  start = STATIC_START,
-  current = STATIC_CURRENT,
+  home,
+  provider,
+  hasProviderLocation = false,
+  providerLabel,
+  minutesAway,
+  /** Only when assigned/on-the-way but tracking lat/lng empty */
+  showLocationNotFound = false,
   style,
   showLocate = true,
 }) {
+  const homePoint = useMemo(() => {
+    if (home && isValidCoord(home.latitude ?? home.lat, home.longitude ?? home.lng)) {
+      return {
+        latitude: Number(home.latitude ?? home.lat),
+        longitude: Number(home.longitude ?? home.lng),
+      };
+    }
+    return FALLBACK_HOME;
+  }, [home]);
+
+  const providerPoint = useMemo(() => {
+    if (
+      provider &&
+      isValidCoord(provider.latitude ?? provider.lat, provider.longitude ?? provider.lng)
+    ) {
+      return {
+        latitude: Number(provider.latitude ?? provider.lat),
+        longitude: Number(provider.longitude ?? provider.lng),
+      };
+    }
+    return null;
+  }, [provider]);
+
+  const canTrack = Boolean(hasProviderLocation && providerPoint);
+
   const html = useMemo(
     () =>
       buildMapHtml({
         mode,
-        home,
-        start,
-        current,
+        home: homePoint,
+        provider: providerPoint || FALLBACK_HOME,
+        hasProviderLocation: canTrack,
+        providerLabel,
+        minutesAway,
       }),
-    [mode, home, start, current],
+    [mode, homePoint, providerPoint, canTrack, providerLabel, minutesAway],
   );
   const webRef = useRef(null);
+
+  const mapKey = canTrack
+    ? `track-${providerPoint.latitude}-${providerPoint.longitude}-${mode}`
+    : `home-${homePoint.latitude}-${homePoint.longitude}-${mode}-nofix`;
 
   const fitRoute = () => {
     webRef.current?.injectJavaScript?.(
@@ -245,7 +284,7 @@ export default function TrackingMap({
   return (
     <View style={[styles.container, style]}>
       <WebView
-        key={mode}
+        key={mapKey}
         ref={webRef}
         originWhitelist={["*"]}
         source={{ html }}
@@ -266,6 +305,18 @@ export default function TrackingMap({
           ? { allowsBackForwardNavigationGestures: false }
           : {})}
       />
+
+      {showLocationNotFound && !canTrack ? (
+        <View style={styles.notFoundBanner} pointerEvents="none">
+          <Icons
+            family="Ionicons"
+            name="location-outline"
+            size={18}
+            color="#14332C"
+          />
+          <Text style={styles.notFoundText}>Location not found</Text>
+        </View>
+      ) : null}
 
       {showLocate ? (
         <TouchableOpacity
@@ -294,6 +345,34 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
     backgroundColor: "#EAF3EE",
+  },
+  notFoundBanner: {
+    position: "absolute",
+    top: 110,
+    alignSelf: "center",
+    left: 24,
+    right: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+    zIndex: 12,
+  },
+  notFoundText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#14332C",
   },
   locateBtn: {
     position: "absolute",
