@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -12,17 +12,20 @@ import {
     View,
 } from 'react-native';
 import { useDispatch } from 'react-redux';
+import ScreenWrapper from '../components/components/ScreenWrapper';
 import { useBookmarks } from '../context/BookmarkContext';
 import { setToken } from '../store/reducer/AuthConfig';
 import { setUserData } from '../store/reducer/usersSlice';
 import { authApi, saveToken } from '../utils/api';
-import {
-    authenticateWithBiometric,
-    biometricErrorMessage,
-    getBiometricCapability,
-    getBiometricCredentials,
-    saveBiometricCredentials,
-} from '../utils/biometric';
+import { goHomeAfterAuth, redirectIfAuthenticated } from '../utils/authNav';
+// Biometric login disabled
+// import {
+//     authenticateWithBiometric,
+//     biometricErrorMessage,
+//     getBiometricCapability,
+//     getBiometricCredentials,
+//     saveBiometricCredentials,
+// } from '../utils/biometric';
 import { registerFcmTokenWithBackend } from '../utils/fcm';
 import { legacyBuggyPkPhone, normalizePhone } from '../utils/phone';
 
@@ -31,6 +34,7 @@ const REVEAL_DURATION = 500;
 
 export default function LoginPinScreen() {
     const router = useRouter();
+    const navigation = useNavigation();
     const dispatch = useDispatch();
     const { refreshForUser } = useBookmarks();
     const { phone } = useLocalSearchParams();
@@ -39,10 +43,14 @@ export default function LoginPinScreen() {
     const [pin, setPin] = useState('');
     const [revealedIndex, setRevealedIndex] = useState(-1);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [biometricLabel, setBiometricLabel] = useState(null);
-    const [canUseBiometric, setCanUseBiometric] = useState(false);
+    // const [biometricLabel, setBiometricLabel] = useState(null);
+    // const [canUseBiometric, setCanUseBiometric] = useState(false);
     const inputRef = useRef(null);
     const revealTimeout = useRef(null);
+
+    useEffect(() => {
+        redirectIfAuthenticated(router, navigation);
+    }, [router, navigation]);
 
     useEffect(() => {
         if (!phoneNumber) {
@@ -57,28 +65,29 @@ export default function LoginPinScreen() {
         };
     }, []);
 
-    useEffect(() => {
-        let mounted = true;
-        (async () => {
-            const cap = await getBiometricCapability();
-            const creds = await getBiometricCredentials();
-            const normalized = normalizePhone(phoneNumber);
-            const savedPhone = normalizePhone(creds.phone || '');
-            const phoneMatches =
-                !!creds.pin &&
-                !!savedPhone &&
-                (savedPhone === normalized ||
-                    savedPhone === legacyBuggyPkPhone(normalized) ||
-                    legacyBuggyPkPhone(savedPhone) === normalized);
-
-            if (!mounted) return;
-            setBiometricLabel(cap.label);
-            setCanUseBiometric(cap.available && cap.enrolled && phoneMatches);
-        })();
-        return () => {
-            mounted = false;
-        };
-    }, [phoneNumber]);
+    // Biometric login disabled — do not probe / show fingerprint option on sign-in
+    // useEffect(() => {
+    //     let mounted = true;
+    //     (async () => {
+    //         const cap = await getBiometricCapability();
+    //         const creds = await getBiometricCredentials();
+    //         const normalized = normalizePhone(phoneNumber);
+    //         const savedPhone = normalizePhone(creds.phone || '');
+    //         const phoneMatches =
+    //             !!creds.pin &&
+    //             !!savedPhone &&
+    //             (savedPhone === normalized ||
+    //                 savedPhone === legacyBuggyPkPhone(normalized) ||
+    //                 legacyBuggyPkPhone(savedPhone) === normalized);
+    //
+    //         if (!mounted) return;
+    //         setBiometricLabel(cap.label);
+    //         setCanUseBiometric(cap.available && cap.enrolled && phoneMatches);
+    //     })();
+    //     return () => {
+    //         mounted = false;
+    //     };
+    // }, [phoneNumber]);
 
     const handleChange = (text) => {
         const cleaned = text.replace(/[^0-9]/g, '').slice(0, PIN_LENGTH);
@@ -124,21 +133,21 @@ export default function LoginPinScreen() {
         const user = data.user || null;
         if (user) {
             dispatch(setUserData(user));
-            if (user.biometricEnabled) {
-                await saveBiometricCredentials(user.phone || normalized, loginPin);
-            }
+            // if (user.biometricEnabled) {
+            //     await saveBiometricCredentials(user.phone || normalized, loginPin);
+            // }
         } else {
             try {
                 const profile = await authApi.getMe(data.token);
                 const nextUser = profile?.user || profile;
                 if (nextUser) {
                     dispatch(setUserData(nextUser));
-                    if (nextUser.biometricEnabled) {
-                        await saveBiometricCredentials(
-                            nextUser.phone || normalized,
-                            loginPin,
-                        );
-                    }
+                    // if (nextUser.biometricEnabled) {
+                    //     await saveBiometricCredentials(
+                    //         nextUser.phone || normalized,
+                    //         loginPin,
+                    //     );
+                    // }
                 }
             } catch (_) {}
         }
@@ -148,7 +157,7 @@ export default function LoginPinScreen() {
         // Postman 12 — send FCM token after login (non-blocking)
         registerFcmTokenWithBackend(data.token);
 
-        router.replace('/home');
+        goHomeAfterAuth(router, navigation);
     };
 
     const handleLogin = async () => {
@@ -168,38 +177,43 @@ export default function LoginPinScreen() {
         }
     };
 
-    const handleBiometricLogin = async () => {
-        if (isSubmitting || !canUseBiometric) return;
-        setIsSubmitting(true);
-        try {
-            const result = await authenticateWithBiometric(
-                `Sign in with ${biometricLabel || 'biometric'}`,
-            );
-            if (!result.success) {
-                const msg = biometricErrorMessage(result);
-                if (msg) Alert.alert('Biometric failed', msg);
-                return;
-            }
-
-            const creds = await getBiometricCredentials();
-            if (!creds.pin) {
-                Alert.alert(
-                    'PIN required',
-                    'Please sign in with your PIN once to enable biometric login.',
-                );
-                return;
-            }
-
-            await completeLogin(phoneNumber || creds.phone, creds.pin);
-        } catch (err) {
-            Alert.alert('Login failed', err.message);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+    // const handleBiometricLogin = async () => {
+    //     if (isSubmitting || !canUseBiometric) return;
+    //     setIsSubmitting(true);
+    //     try {
+    //         const result = await authenticateWithBiometric(
+    //             `Sign in with ${biometricLabel || 'biometric'}`,
+    //         );
+    //         if (!result.success) {
+    //             const msg = biometricErrorMessage(result);
+    //             if (msg) Alert.alert('Biometric failed', msg);
+    //             return;
+    //         }
+    //
+    //         const creds = await getBiometricCredentials();
+    //         if (!creds.pin) {
+    //             Alert.alert(
+    //                 'PIN required',
+    //                 'Please sign in with your PIN once to enable biometric login.',
+    //             );
+    //             return;
+    //         }
+    //
+    //         await completeLogin(phoneNumber || creds.phone, creds.pin);
+    //     } catch (err) {
+    //         Alert.alert('Login failed', err.message);
+    //     } finally {
+    //         setIsSubmitting(false);
+    //     }
+    // };
 
     return (
-        <View style={styles.container}>
+        <ScreenWrapper
+            backgroundColor="#F6FAF8"
+            statusBarColor="#F6FAF8"
+            paddingHorizontal={24}
+            scrollEnabled
+        >
             <View style={styles.headerRow}>
                 <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                     <Ionicons name="chevron-back" size={26} color="#000" />
@@ -239,7 +253,7 @@ export default function LoginPinScreen() {
                 maxLength={PIN_LENGTH}
                 returnKeyType="done"
                 onSubmitEditing={handleLogin}
-                autoFocus={!canUseBiometric}
+                autoFocus
                 style={styles.hiddenInput}
                 caretHidden
             />
@@ -259,6 +273,7 @@ export default function LoginPinScreen() {
                 )}
             </TouchableOpacity>
 
+            {/* Biometric login disabled
             {canUseBiometric ? (
                 <TouchableOpacity
                     style={styles.biometricButton}
@@ -279,21 +294,17 @@ export default function LoginPinScreen() {
                     </Text>
                 </TouchableOpacity>
             ) : null}
-        </View>
+            */}
+        </ScreenWrapper>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F6FAF8',
-        paddingHorizontal: 24,
-        paddingTop: 70,
-    },
     headerRow: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 60,
+        marginTop: 8,
     },
     backButton: {
         width: 26,

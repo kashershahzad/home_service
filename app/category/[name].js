@@ -1,6 +1,8 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
+import { getToken } from "../../utils/api";
+import { getBookingRoute } from "../../utils/bookingNav";
 
 /**
  * Redirect only — booking UI already lives in:
@@ -13,34 +15,26 @@ export default function CategoryRedirect() {
   const slug = String(Array.isArray(name) ? name[0] : name || "").toLowerCase();
 
   useEffect(() => {
-    if (!slug) {
-      router.replace("/home");
-      return;
-    }
+    let mounted = true;
+    (async () => {
+      if (!slug) {
+        router.replace("/home");
+        return;
+      }
 
-    if (
-      slug === "home-cleaning" ||
-      slug.includes("clean") ||
-      slug === "laundry"
-    ) {
-      router.replace("/booking/propertyBooking");
-      return;
-    }
+      const token = await getToken();
+      if (!mounted) return;
+      if (!token) {
+        router.replace("/letYouIn");
+        return;
+      }
 
-    if (
-      slug === "hair-dressing" ||
-      slug.includes("hair") ||
-      slug.includes("beauty") ||
-      slug.includes("salon")
-    ) {
-      router.replace({
-        pathname: "/booking/bookHaircutService",
-        params: { categorySlug: slug },
-      });
-      return;
-    }
+      router.replace(getBookingRoute({ slug, id: slug, title: slug }));
+    })();
 
-    router.replace("/booking/propertyBooking");
+    return () => {
+      mounted = false;
+    };
   }, [slug, router]);
 
   return (

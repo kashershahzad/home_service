@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "HomeServiceApp",
+    "name": "Homely",
     "slug": "HomeServiceApp",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "homeserviceapp",
@@ -72,8 +72,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow HomeServiceApp to access your photos.",
-          "cameraPermission": "Allow HomeServiceApp to access your camera."
+          "photosPermission": "Allow Homely to access your photos.",
+          "cameraPermission": "Allow Homely to access your camera."
         }
       ],
       "expo-secure-store",

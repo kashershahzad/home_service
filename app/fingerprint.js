@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -8,15 +8,16 @@ import {
   Easing,
   Image,
   Modal,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
+import ScreenWrapper from "../components/components/ScreenWrapper";
 import { setUserData } from "../store/reducer/usersSlice";
 import { authApi, getToken } from "../utils/api";
+import { goHomeAfterAuth } from "../utils/authNav";
 import {
   clearBiometricCredentials,
   getBiometricCapability,
@@ -40,6 +41,7 @@ const DECOR_DOTS = [
 
 export default function SetFingerprintScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const dispatch = useDispatch();
   const { mode } = useLocalSearchParams();
   const isUpdate = mode === "update";
@@ -87,7 +89,7 @@ export default function SetFingerprintScreen() {
       else router.replace("/profile");
       return;
     }
-    router.replace("/home");
+    goHomeAfterAuth(router, navigation);
   };
 
   const goHomeAfterSuccess = () => {
@@ -183,8 +185,12 @@ export default function SetFingerprintScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-      <View style={styles.container}>
+    <ScreenWrapper
+      backgroundColor="#F6FAF8"
+      statusBarColor="#F6FAF8"
+      paddingHorizontal={24}
+      scrollEnabled
+    >
         <View style={styles.headerRow}>
           <TouchableOpacity
             style={styles.backButton}
@@ -309,19 +315,13 @@ export default function SetFingerprintScreen() {
             </View>
           </View>
         </Modal>
-      </View>
-    </ScrollView>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F6FAF8",
-    paddingHorizontal: 24,
-    paddingTop: 70,
-  },
   headerRow: {
+    marginTop: 8,
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 40,

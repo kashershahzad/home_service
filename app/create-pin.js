@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -11,21 +11,24 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
+import ScreenWrapper from '../components/components/ScreenWrapper';
 import { setToken } from '../store/reducer/AuthConfig';
 import { setUserData } from '../store/reducer/usersSlice';
 import { authApi, getToken, saveToken } from '../utils/api';
-import { saveBiometricCredentials, savePinForBiometric } from '../utils/biometric';
+import { goHomeAfterAuth } from '../utils/authNav';
+// import { saveBiometricCredentials, savePinForBiometric } from '../utils/biometric';
 
 const PIN_LENGTH = 4;
 const REVEAL_DURATION = 500;
 
 export default function CreatePinScreen() {
     const router = useRouter();
+    const navigation = useNavigation();
     const dispatch = useDispatch();
     const { mode } = useLocalSearchParams();
     const isUpdate = mode === 'update';
-    const user = useSelector((state) => state.users.userData);
+    // const user = useSelector((state) => state.users.userData);
 
     const [pin, setPin] = useState('');
     const [revealedIndex, setRevealedIndex] = useState(-1);
@@ -81,11 +84,11 @@ export default function CreatePinScreen() {
             await saveToken(data.token);
             dispatch(setToken(data.token));
 
-            // Needed so biometric login can call /auth/login with this PIN
-            await savePinForBiometric(pin);
-            if (user?.phone) {
-                await saveBiometricCredentials(user.phone, pin);
-            }
+            // Biometric disabled — skip saving PIN for biometric login
+            // await savePinForBiometric(pin);
+            // if (user?.phone) {
+            //     await saveBiometricCredentials(user.phone, pin);
+            // }
 
             try {
                 const profile = await authApi.getMe(data.token);
@@ -106,7 +109,9 @@ export default function CreatePinScreen() {
                 return;
             }
 
-            router.push('/fingerprint');
+            // Biometric screen skipped — go straight to home after PIN
+            // router.push('/fingerprint');
+            goHomeAfterAuth(router, navigation);
         } catch (err) {
             Alert.alert(
                 isUpdate ? 'Could not update PIN' : 'Could not set PIN',
@@ -118,7 +123,12 @@ export default function CreatePinScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <ScreenWrapper
+            backgroundColor="#F6FAF8"
+            statusBarColor="#F6FAF8"
+            paddingHorizontal={24}
+            scrollEnabled
+        >
             <View style={styles.headerRow}>
                 <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
                     <Ionicons name="chevron-back" size={26} color="#000" />
@@ -183,21 +193,16 @@ export default function CreatePinScreen() {
                     </Text>
                 )}
             </TouchableOpacity>
-        </View>
+        </ScreenWrapper>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F6FAF8',
-        paddingHorizontal: 24,
-        paddingTop: 70,
-    },
     headerRow: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 60,
+        marginTop: 8,
     },
     backButton: {
         width: 26,

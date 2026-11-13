@@ -475,6 +475,7 @@ export default function BookingsScreen() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(null);
   const [error, setError] = useState(null);
   const loadBookings = useCallback(async () => {
     setLoading(true);
@@ -482,9 +483,11 @@ export default function BookingsScreen() {
     try {
       const token = await getToken();
       if (!token) {
-        setBookings(DEMO_BOOKINGS);
+        setIsLoggedIn(false);
+        setBookings([]);
         return;
       }
+      setIsLoggedIn(true);
 
       const [allRes, pastRes, upcomingRes] = await Promise.all([
         bookingApi.list(token).catch(() => null),
@@ -503,10 +506,10 @@ export default function BookingsScreen() {
       });
 
       const list = Array.from(byId.values());
-      setBookings(list.length === 0 ? DEMO_BOOKINGS : list);
+      setBookings(list);
     } catch (err) {
       setError(err?.message || "Could not load bookings");
-      setBookings(DEMO_BOOKINGS);
+      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -528,6 +531,68 @@ export default function BookingsScreen() {
     }
     return bookings.filter((b) => b.status === activeFilter);
   }, [activeFilter, bookings]);
+
+  if (isLoggedIn === false) {
+    return (
+      <View style={[styles.safe, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            hitSlop={HIT_SLOP}
+            onPress={() => router.replace("/home")}
+          >
+            <Icons
+              family="Ionicons"
+              name="arrow-back"
+              size={22}
+              color={COLORS.text}
+            />
+          </TouchableOpacity>
+          <CustomText
+            label="Booking"
+            removeTranslation
+            fontSize={18}
+            fontFamily={fonts.bold}
+            color={COLORS.text}
+          />
+          <View style={styles.headerBtn} />
+        </View>
+        <View style={styles.guestWrap}>
+          <CustomText
+            label="Sign in to see your bookings"
+            removeTranslation
+            fontSize={17}
+            fontFamily={fonts.bold}
+            color={COLORS.text}
+            textAlign="center"
+          />
+          <CustomText
+            label="Track upcoming jobs and history after you log in."
+            removeTranslation
+            fontSize={13}
+            fontFamily={fonts.medium}
+            color={COLORS.muted}
+            textAlign="center"
+            marginTop={8}
+          />
+          <TouchableOpacity
+            style={styles.loginButton}
+            activeOpacity={0.85}
+            onPress={() => router.push("/letYouIn")}
+          >
+            <CustomText
+              label="Login"
+              removeTranslation
+              fontSize={16}
+              fontFamily={fonts.bold}
+              color="#FFFFFF"
+            />
+          </TouchableOpacity>
+        </View>
+        <BottomTabBar active="bookings" />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.safe, { paddingTop: insets.top }]}>
@@ -583,7 +648,7 @@ export default function BookingsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
       >
-        {loading ? (
+        {loading || isLoggedIn == null ? (
           <ActivityIndicator
             color={COLORS.primary}
             style={{ marginVertical: 28 }}
@@ -681,6 +746,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 40,
     paddingHorizontal: 24,
+  },
+  guestWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    paddingBottom: 40,
+  },
+  loginButton: {
+    marginTop: 22,
+    backgroundColor: COLORS.primary,
+    borderRadius: 28,
+    paddingVertical: 14,
+    paddingHorizontal: 48,
+    alignItems: "center",
   },
   card: {
     borderWidth: 1,

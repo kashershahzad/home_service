@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>HomeServiceApp</string>
+	<string>Homely</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -48,7 +48,7 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Allow HomeServiceApp to access your camera.</string>
+	<string>Allow Homely to access your camera.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>We use Face ID to securely verify your identity</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
@@ -67,7 +67,7 @@
 	<key>NSMotionUsageDescription</key>
 	<string>Allow $(PRODUCT_NAME) to detect your current motion activity</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Allow HomeServiceApp to access your photos.</string>
+	<string>Allow Homely to access your photos.</string>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>

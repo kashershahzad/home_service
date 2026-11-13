@@ -3,8 +3,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Image,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -12,6 +10,7 @@ import {
 } from "react-native";
 import { fonts } from "../../../assets/fonts/fonts";
 import { images } from "../../../assets/images/image";
+import ScreenWrapper from "../../../components/components/ScreenWrapper";
 
 const ACCENT = "#0E6E4C";
 const BG = "#F6FAF8";
@@ -89,23 +88,46 @@ export default function BookHaircutService() {
   const [selectedId, setSelectedId] = useState("men");
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          hitSlop={12}
-        >
-          <Ionicons name="arrow-back" size={22} color={ACCENT} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Book Services</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+    <ScreenWrapper
+      backgroundColor={BG}
+      statusBarColor={HEADER_BG}
+      paddingHorizontal={0}
+      scrollEnabled
+      headerUnScrollable={() => (
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            hitSlop={12}
+          >
+            <Ionicons name="arrow-back" size={22} color={ACCENT} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Book Services</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+      )}
+      footerUnScrollable={() => (
+        <View style={styles.footer}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={styles.continueBtn}
+            onPress={() => {
+              router.push({
+                pathname: "/booking/bookHaircutService/packages",
+                params: {
+                  ...params,
+                  category: selectedId,
+                },
+              });
+            }}
+          >
+            <Text style={styles.continueText}>Continue</Text>
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      )}
+    >
+      <View style={styles.scrollContent}>
         <Text style={styles.heroTitle}>Who is the service for?</Text>
         <Text style={styles.heroSubtitle}>
           Choose a category to explore packages.
@@ -121,27 +143,8 @@ export default function BookHaircutService() {
             />
           ))}
         </View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          activeOpacity={0.85}
-          style={styles.continueBtn}
-          onPress={() => {
-            router.push({
-              pathname: "/booking/bookHaircutService/packages",
-              params: {
-                ...params,
-                category: selectedId,
-              },
-            });
-          }}
-        >
-          <Text style={styles.continueText}>Continue</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
-        </TouchableOpacity>
       </View>
-    </View>
+    </ScreenWrapper>
   );
 }
 
@@ -154,8 +157,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: HEADER_BG,
-    paddingTop: Platform.OS === "ios" ? 54 : 28,
     paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 12,
   },
   backBtn: {
@@ -177,7 +180,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 120,
+    paddingBottom: 24,
   },
   heroTitle: {
     fontFamily: fonts.bold,
@@ -271,13 +274,9 @@ const styles = StyleSheet.create({
     color: MUTED,
   },
   footer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    paddingBottom: 8,
     backgroundColor: BG,
   },
   continueBtn: {

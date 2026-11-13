@@ -1,15 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  Image,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import ScreenWrapper from "../components/components/ScreenWrapper";
 import { images } from "../assets/images/image";
 
 const COLORS = {
@@ -84,29 +76,49 @@ export default function ReviewSummaryScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.headerBtn}
-          hitSlop={HIT_SLOP}
-          onPress={() => (router.canGoBack() ? router.back() : router.replace("/home"))}
-        >
-          <Ionicons name="chevron-back" size={26} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Review Summary</Text>
-        <View style={styles.headerBtn} />
-      </View>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+    <ScreenWrapper
+      backgroundColor={COLORS.bg}
+      statusBarColor={COLORS.bg}
+      paddingHorizontal={0}
+      scrollEnabled
+      headerUnScrollable={() => (
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            hitSlop={HIT_SLOP}
+            onPress={() =>
+              router.canGoBack() ? router.back() : router.replace("/home")
+            }
+          >
+            <Ionicons name="chevron-back" size={26} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Review Summary</Text>
+          <View style={styles.headerBtn} />
+        </View>
+      )}
+      footerUnScrollable={() => (
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={confirmBooking}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.primaryButtonText}>Confirm Booking</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    >
+      <View style={styles.scrollContent}>
         <View style={styles.serviceCard}>
           {image ? (
             <Image source={{ uri: image }} style={styles.serviceImage} />
           ) : (
             <View style={[styles.serviceImage, styles.imagePlaceholder]}>
-              <Ionicons name="construct-outline" size={28} color={COLORS.primary} />
+              <Ionicons
+                name="construct-outline"
+                size={28}
+                color={COLORS.primary}
+              />
             </View>
           )}
           <View style={{ flex: 1 }}>
@@ -150,18 +162,8 @@ export default function ReviewSummaryScreen() {
             <Text style={styles.totalValue}>Rs.{total}</Text>
           </View>
         </View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={confirmBooking}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.primaryButtonText}>Confirm Booking</Text>
-        </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </ScreenWrapper>
   );
 }
 
@@ -288,7 +290,7 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: Platform.OS === "ios" ? 24 : 28,
+    paddingBottom: 8,
     backgroundColor: COLORS.card,
   },
   primaryButton: {

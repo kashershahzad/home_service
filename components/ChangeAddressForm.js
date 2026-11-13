@@ -1,13 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   KeyboardAvoidingView,
   Linking,
   Platform,
+  ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -15,15 +18,32 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { addressApi, getToken } from "../utils/api";
-import { MapView, Marker, PROVIDER_GOOGLE } from "./Map";
+import OsmMapPicker from "./OsmMapPicker";
 
 const ACCENT = "#0E6E4C";
 const DEFAULT_REGION = {
   latitude: 31.52,
   longitude: 74.35,
-  latitudeDelta: 0.02,
-  longitudeDelta: 0.02,
 };
+
+function normalizeList(data) {
+  return data?.addresses || data?.data || (Array.isArray(data) ? data : []);
+}
+
+function mapAddress(raw) {
+  if (!raw) return null;
+  return {
+    id: String(raw._id || raw.id || ""),
+    label: raw.label || "Home",
+    line: raw.line || raw.address || "",
+    area: raw.area || "",
+    city: raw.city || "",
+    lat: Number(raw.lat ?? raw.latitude) || DEFAULT_REGION.latitude,
+    lng: Number(raw.lng ?? raw.longitude) || DEFAULT_REGION.longitude,
+    isDefault: !!raw.isDefault,
+    raw,
+  };
+}
 
 function buildAddressLine(place, latitude, longitude) {
   if (!place) return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
@@ -39,10 +59,35 @@ function buildAddressLine(place, latitude, longitude) {
   return unique.join(", ") || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
 }
 
+async function reverseGeocodeOsm(latitude, longitude) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(
+      latitude,
+    )}&lon=${encodeURIComponent(longitude)}`;
+    const res = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "HomelyHomeServiceApp/1.0",
+      },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const a = data?.address || {};
+    return {
+      line:
+        data?.display_name ||
+        `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
+      area: a.suburb || a.neighbourhood || a.county || a.city_district || "",
+      city: a.city || a.town || a.village || a.state || "",
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Map-based Change Address (same UX as signup map picker).
- * Saves via Postman 05 create/update address APIs.
- * onSaved({ addressId, address })
+ * OpenStreetMap-based address manager.
+ * Supports multiple saved addresses (list + add/edit).
  */
 export default function ChangeAddressForm({
   initialAddress,
@@ -50,39 +95,50 @@ export default function ChangeAddressForm({
   onCancel,
   accent = ACCENT,
   title = "Change Address",
+  /** When true, after save ask “Add another” (profile addresses). */
+  allowMultipleAdds = true,
 }) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef(null);
+
+  const [mode, setMode] = useState("list"); // list | edit
+  const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
 
-  const [addressId, setAddressId] = useState(
-    initialAddress?.id || initialAddress?._id || null,
-  );
-  const [label, setLabel] = useState(initialAddress?.label || "Home");
-  const [addressLine, setAddressLine] = useState(initialAddress?.line || "");
-  const [area, setArea] = useState(initialAddress?.area || "");
-  const [city, setCity] = useState(initialAddress?.city || "");
-
-  const startLat = Number(initialAddress?.lat) || DEFAULT_REGION.latitude;
-  const startLng = Number(initialAddress?.lng) || DEFAULT_REGION.longitude;
-
-  const [mapRegion, setMapRegion] = useState({
-    latitude: startLat,
-    longitude: startLng,
-    latitudeDelta: 0.02,
-    longitudeDelta: 0.02,
-  });
+  const [addressId, setAddressId] = useState(null);
+  const [label, setLabel] = useState("Home");
+  const [addressLine, setAddressLine] = useState("");
+  const [area, setArea] = useState("");
+  const [city, setCity] = useState("");
+  const [isDefault, setIsDefault] = useState(false);
   const [markerCoordinate, setMarkerCoordinate] = useState({
-    latitude: startLat,
-    longitude: startLng,
+    latitude: DEFAULT_REGION.latitude,
+    longitude: DEFAULT_REGION.longitude,
   });
+
+  const loadAddresses = useCallback(async () => {
+    const token = await getToken();
+    if (!token) throw new Error("Please sign in again.");
+    const data = await addressApi.list(token);
+    const list = normalizeList(data).map(mapAddress).filter((a) => a?.id);
+    setAddresses(list);
+    return list;
+  }, []);
 
   const reverseGeocode = async (latitude, longitude) => {
     setIsReverseGeocoding(true);
     try {
+      const osm = await reverseGeocodeOsm(latitude, longitude);
+      if (osm) {
+        setAddressLine(osm.line);
+        if (osm.area) setArea(osm.area);
+        if (osm.city) setCity(osm.city);
+        return;
+      }
+
       const results = await Location.reverseGeocodeAsync({
         latitude,
         longitude,
@@ -90,8 +146,8 @@ export default function ChangeAddressForm({
       if (results?.length) {
         const place = results[0];
         setAddressLine(buildAddressLine(place, latitude, longitude));
-        setArea(place.district || place.subregion || place.name || area);
-        setCity(place.city || place.region || city);
+        setArea(place.district || place.subregion || place.name || "");
+        setCity(place.city || place.region || "");
       } else {
         setAddressLine(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
       }
@@ -102,19 +158,17 @@ export default function ChangeAddressForm({
     }
   };
 
-  const goToCurrentLocation = async (fallbackRegion) => {
+  const applyCoordinate = (latitude, longitude, { geocode = true, animate = true } = {}) => {
+    setMarkerCoordinate({ latitude, longitude });
+    mapRef.current?.setCoordinate?.(latitude, longitude, animate);
+    if (geocode) reverseGeocode(latitude, longitude);
+  };
+
+  const goToCurrentLocation = async () => {
     setIsLocating(true);
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (!permission.granted) {
-        if (fallbackRegion) {
-          setMapRegion(fallbackRegion);
-          setMarkerCoordinate({
-            latitude: fallbackRegion.latitude,
-            longitude: fallbackRegion.longitude,
-          });
-          reverseGeocode(fallbackRegion.latitude, fallbackRegion.longitude);
-        }
         if (!permission.canAskAgain) {
           Alert.alert(
             "Location Permission Needed",
@@ -127,90 +181,70 @@ export default function ChangeAddressForm({
         }
         return;
       }
-
       const position = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
-      const region = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        latitudeDelta: 0.02,
-        longitudeDelta: 0.02,
-      };
-      setMapRegion(region);
-      setMarkerCoordinate({
-        latitude: region.latitude,
-        longitude: region.longitude,
-      });
-      mapRef.current?.animateToRegion(region, 400);
-      reverseGeocode(region.latitude, region.longitude);
+      applyCoordinate(position.coords.latitude, position.coords.longitude);
     } catch {
-      if (fallbackRegion) {
-        setMapRegion(fallbackRegion);
-        setMarkerCoordinate({
-          latitude: fallbackRegion.latitude,
-          longitude: fallbackRegion.longitude,
-        });
-        reverseGeocode(fallbackRegion.latitude, fallbackRegion.longitude);
-      }
       Alert.alert("Location Error", "Could not get your current location.");
     } finally {
       setIsLocating(false);
     }
   };
 
+  const openNewAddress = () => {
+    setAddressId(null);
+    setLabel("Home");
+    setAddressLine("");
+    setArea("");
+    setCity("");
+    setIsDefault(addresses.length === 0);
+    setMode("edit");
+    applyCoordinate(DEFAULT_REGION.latitude, DEFAULT_REGION.longitude, {
+      geocode: false,
+      animate: false,
+    });
+    setTimeout(() => goToCurrentLocation(), 250);
+  };
+
+  const openEditAddress = (item) => {
+    setAddressId(item.id);
+    setLabel(item.label || "Home");
+    setAddressLine(item.line || "");
+    setArea(item.area || "");
+    setCity(item.city || "");
+    setIsDefault(!!item.isDefault);
+    setMode("edit");
+    applyCoordinate(item.lat, item.lng, {
+      geocode: !item.line,
+      animate: false,
+    });
+  };
+
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const token = await getToken();
-        if (!token) {
-          Alert.alert("Error", "Please sign in again.");
-          return;
-        }
-        const data = await addressApi.list(token);
-        const list =
-          data?.addresses || data?.data || (Array.isArray(data) ? data : []);
-        const preferred =
-          list.find((a) => a.isDefault) ||
-          list.find(
-            (a) =>
-              String(a._id || a.id) ===
-              String(initialAddress?.id || initialAddress?._id || ""),
-          ) ||
-          list[0] ||
-          null;
-
+        const list = await loadAddresses();
         if (!mounted) return;
 
-        if (preferred) {
-          const lat = Number(preferred.lat) || DEFAULT_REGION.latitude;
-          const lng = Number(preferred.lng) || DEFAULT_REGION.longitude;
-          const region = {
-            latitude: lat,
-            longitude: lng,
-            latitudeDelta: 0.02,
-            longitudeDelta: 0.02,
-          };
-          setAddressId(preferred._id || preferred.id || null);
-          setLabel(preferred.label || "Home");
-          setAddressLine(preferred.line || "");
-          setArea(preferred.area || "");
-          setCity(preferred.city || "");
-          setMapRegion(region);
-          setMarkerCoordinate({ latitude: lat, longitude: lng });
-          mapRef.current?.animateToRegion(region, 300);
-          if (!preferred.line) reverseGeocode(lat, lng);
-        } else if (!initialAddress?.line) {
-          await goToCurrentLocation(DEFAULT_REGION);
+        if (initialAddress?.id || initialAddress?._id) {
+          const match =
+            list.find(
+              (a) =>
+                String(a.id) ===
+                String(initialAddress.id || initialAddress._id),
+            ) || mapAddress(initialAddress);
+          if (match?.id) openEditAddress(match);
+          else setMode("list");
+        } else if (!list.length) {
+          openNewAddress();
         } else {
-          reverseGeocode(startLat, startLng);
+          setMode("list");
         }
       } catch (err) {
-        console.log("[address] map load failed:", err?.message || err);
-        if (!initialAddress?.line) {
-          await goToCurrentLocation(DEFAULT_REGION);
-        }
+        console.log("[address] load failed:", err?.message || err);
+        if (!initialAddress) openNewAddress();
       } finally {
         if (mounted) setLoading(false);
       }
@@ -221,21 +255,9 @@ export default function ChangeAddressForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleMarkerDragEnd = (event) => {
-    const { latitude, longitude } = event.nativeEvent.coordinate;
-    setMarkerCoordinate({ latitude, longitude });
-    reverseGeocode(latitude, longitude);
-  };
-
-  const handleMapPress = (event) => {
-    const { latitude, longitude } = event.nativeEvent.coordinate;
-    setMarkerCoordinate({ latitude, longitude });
-    reverseGeocode(latitude, longitude);
-  };
-
   const handleSave = async () => {
     if (!addressLine.trim()) {
-      Alert.alert("Missing address", "Move the map or enter your address.");
+      Alert.alert("Missing address", "Tap the map or enter your address.");
       return;
     }
 
@@ -251,7 +273,7 @@ export default function ChangeAddressForm({
         city: (city || "Lahore").trim(),
         lat: markerCoordinate.latitude,
         lng: markerCoordinate.longitude,
-        isDefault: true,
+        isDefault: !!isDefault || addresses.length === 0,
       };
 
       let saved;
@@ -263,20 +285,50 @@ export default function ChangeAddressForm({
         saved = res?.address || res;
       }
 
-      const id = saved?._id || saved?.id || addressId;
+      const mapped = mapAddress(saved) || {
+        id: String(saved?._id || saved?.id || addressId || ""),
+        label: body.label,
+        line: body.line,
+        area: body.area || "",
+        city: body.city,
+        lat: body.lat,
+        lng: body.lng,
+        isDefault: body.isDefault,
+        raw: saved,
+      };
+
+      const list = await loadAddresses().catch(() => null);
+      if (!list) {
+        setAddresses((prev) => {
+          const without = prev.filter((a) => a.id !== mapped.id);
+          return [mapped, ...without];
+        });
+      }
+
       onSaved?.({
-        addressId: id ? String(id) : null,
-        address: {
-          id: id ? String(id) : null,
-          label: saved?.label || body.label,
-          line: saved?.line || body.line,
-          area: saved?.area || body.area || "",
-          city: saved?.city || body.city,
-          lat: saved?.lat ?? body.lat,
-          lng: saved?.lng ?? body.lng,
-          raw: saved,
-        },
+        addressId: mapped.id || null,
+        address: mapped,
       });
+
+      if (allowMultipleAdds) {
+        Alert.alert(
+          "Saved",
+          addressId ? "Address updated." : "Address added.",
+          [
+            {
+              text: "Add another",
+              onPress: () => openNewAddress(),
+            },
+            {
+              text: "Done",
+              style: "cancel",
+              onPress: () => setMode("list"),
+            },
+          ],
+        );
+      } else {
+        setMode("list");
+      }
     } catch (err) {
       Alert.alert("Error", err?.message || "Could not save address.");
     } finally {
@@ -284,46 +336,127 @@ export default function ChangeAddressForm({
     }
   };
 
+  const topPad = Math.max(insets.top, Platform.OS === "ios" ? 12 : 8);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator color={accent} size="large" />
+      </View>
+    );
+  }
+
+  if (mode === "list") {
+    return (
+      <View style={[styles.container, { paddingTop: topPad }]}>
+        <View style={styles.listHeader}>
+          <TouchableOpacity
+            style={styles.roundBtn}
+            onPress={onCancel}
+            hitSlop={10}
+          >
+            <Ionicons name="chevron-back" size={22} color="#000" />
+          </TouchableOpacity>
+          <Text style={styles.listTitle}>{title}</Text>
+          <View style={styles.roundBtnSpacer} />
+        </View>
+
+        <FlatList
+          data={addresses}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: Math.max(insets.bottom, 16) + 88 },
+          ]}
+          ListEmptyComponent={
+            <View style={styles.emptyWrap}>
+              <Ionicons name="location-outline" size={40} color="#9AA8A1" />
+              <Text style={styles.emptyTitle}>No addresses yet</Text>
+              <Text style={styles.emptySub}>
+                Add one or more locations for bookings.
+              </Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.addressCard}
+              activeOpacity={0.85}
+              onPress={() => openEditAddress(item)}
+            >
+              <View
+                style={[styles.addressIcon, { backgroundColor: `${accent}18` }]}
+              >
+                <Ionicons name="location" size={20} color={accent} />
+              </View>
+              <View style={styles.addressBody}>
+                <View style={styles.addressTitleRow}>
+                  <Text style={styles.addressLabel}>{item.label}</Text>
+                  {item.isDefault ? (
+                    <View style={[styles.defaultBadge, { backgroundColor: accent }]}>
+                      <Text style={styles.defaultBadgeText}>Default</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={styles.addressLine} numberOfLines={2}>
+                  {item.line || `${item.lat.toFixed(4)}, ${item.lng.toFixed(4)}`}
+                </Text>
+                {item.city ? (
+                  <Text style={styles.addressMeta}>{item.city}</Text>
+                ) : null}
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#C4C4C4" />
+            </TouchableOpacity>
+          )}
+        />
+
+        <TouchableOpacity
+          style={[
+            styles.addFab,
+            {
+              backgroundColor: accent,
+              bottom: Math.max(insets.bottom, 16) + 12,
+            },
+          ]}
+          activeOpacity={0.9}
+          onPress={openNewAddress}
+        >
+          <Ionicons name="add" size={22} color="#fff" />
+          <Text style={styles.addFabText}>Add Address</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <MapView
+      <OsmMapPicker
         ref={mapRef}
-        provider={PROVIDER_GOOGLE}
         style={styles.map}
-        initialRegion={mapRegion}
-        onPress={handleMapPress}
-        showsUserLocation
-        showsMyLocationButton={false}
-        showsPointsOfInterest
-        showsBuildings
-        mapType="standard"
-      >
-        <Marker
-          coordinate={markerCoordinate}
-          draggable
-          onDragEnd={handleMarkerDragEnd}
-          pinColor={accent}
-        />
-      </MapView>
+        accent={accent}
+        coordinate={markerCoordinate}
+        onCoordinateChange={({ latitude, longitude }) => {
+          setMarkerCoordinate({ latitude, longitude });
+          reverseGeocode(latitude, longitude);
+        }}
+      />
 
-      {loading ? (
-        <View style={styles.loadingBanner} pointerEvents="none">
-          <ActivityIndicator color={accent} />
-        </View>
-      ) : null}
-
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, { top: topPad + 8 }]}>
         <TouchableOpacity
           style={styles.roundBtn}
-          onPress={onCancel}
+          onPress={() => {
+            if (addresses.length) setMode("list");
+            else onCancel?.();
+          }}
           hitSlop={10}
         >
           <Ionicons name="chevron-back" size={22} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{title}</Text>
+        <Text style={styles.headerTitle}>
+          {addressId ? "Edit Address" : "Add Address"}
+        </Text>
         <TouchableOpacity
           style={styles.roundBtn}
-          onPress={() => goToCurrentLocation(mapRegion)}
+          onPress={goToCurrentLocation}
           disabled={isLocating}
         >
           {isLocating ? (
@@ -338,80 +471,174 @@ export default function ChangeAddressForm({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={[
           styles.bottomCard,
-          { paddingBottom: Math.max(insets.bottom, 16) + 16 },
+          { paddingBottom: Math.max(insets.bottom, 16) + 12 },
         ]}
       >
-        <Text style={styles.sectionLabel}>Selected Location</Text>
-
-        <Text style={styles.fieldLabel}>Label</Text>
-        <TextInput
-          style={styles.labelInput}
-          value={label}
-          onChangeText={setLabel}
-          placeholder="Home, Office…"
-          placeholderTextColor="#9A9A9A"
-        />
-
-        <Text style={styles.fieldLabel}>Address</Text>
-        <View style={styles.addressRow}>
-          {isReverseGeocoding ? (
-            <View style={styles.addressLoadingRow}>
-              <ActivityIndicator size="small" color={accent} />
-              <Text style={styles.addressLoadingText}>Finding address…</Text>
-            </View>
-          ) : (
-            <TextInput
-              style={styles.addressInput}
-              value={addressLine}
-              onChangeText={setAddressLine}
-              placeholder="Move the map to drop a pin"
-              placeholderTextColor="#9A9A9A"
-              multiline
-            />
-          )}
-          <Ionicons name="location" size={20} color={accent} />
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            { backgroundColor: accent },
-            (!addressLine.trim() || isReverseGeocoding || saving) &&
-              styles.primaryButtonDisabled,
-          ]}
-          onPress={handleSave}
-          disabled={!addressLine.trim() || isReverseGeocoding || saving}
-          activeOpacity={0.85}
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.primaryButtonText}>
-              {addressId ? "Update Address" : "Save Address"}
-            </Text>
-          )}
-        </TouchableOpacity>
+          <Text style={styles.sectionLabel}>Selected Location</Text>
+          <Text style={styles.osmHint}>OpenStreetMap · tap or drag pin</Text>
+
+          <Text style={styles.fieldLabel}>Label</Text>
+          <TextInput
+            style={styles.labelInput}
+            value={label}
+            onChangeText={setLabel}
+            placeholder="Home, Office…"
+            placeholderTextColor="#9A9A9A"
+          />
+
+          <Text style={styles.fieldLabel}>Address</Text>
+          <View style={styles.addressRow}>
+            {isReverseGeocoding ? (
+              <View style={styles.addressLoadingRow}>
+                <ActivityIndicator size="small" color={accent} />
+                <Text style={styles.addressLoadingText}>Finding address…</Text>
+              </View>
+            ) : (
+              <TextInput
+                style={styles.addressInput}
+                value={addressLine}
+                onChangeText={setAddressLine}
+                placeholder="Tap map to drop a pin"
+                placeholderTextColor="#9A9A9A"
+                multiline
+              />
+            )}
+            <Ionicons name="location" size={20} color={accent} />
+          </View>
+
+          <View style={styles.defaultRow}>
+            <Text style={styles.defaultLabel}>Set as default</Text>
+            <Switch
+              value={isDefault}
+              onValueChange={setIsDefault}
+              trackColor={{ false: "#D5D5D5", true: `${accent}88` }}
+              thumbColor={isDefault ? accent : "#f4f3f4"}
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.primaryButton,
+              { backgroundColor: accent },
+              (!addressLine.trim() || isReverseGeocoding || saving) &&
+                styles.primaryButtonDisabled,
+            ]}
+            onPress={handleSave}
+            disabled={!addressLine.trim() || isReverseGeocoding || saving}
+            activeOpacity={0.85}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.primaryButtonText}>
+                {addressId ? "Update Address" : "Save Address"}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#E8EEF0" },
+  container: { flex: 1, backgroundColor: "#F6FAF8" },
+  centered: { alignItems: "center", justifyContent: "center" },
   map: {
     ...StyleSheet.absoluteFillObject,
   },
-  loadingBanner: {
-    position: "absolute",
-    top: "45%",
-    alignSelf: "center",
-    backgroundColor: "rgba(255,255,255,0.9)",
-    padding: 12,
-    borderRadius: 24,
+  listHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    gap: 10,
   },
+  listTitle: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#111",
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  emptyWrap: {
+    alignItems: "center",
+    paddingTop: 80,
+    paddingHorizontal: 28,
+  },
+  emptyTitle: {
+    marginTop: 12,
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#14332C",
+  },
+  emptySub: {
+    marginTop: 6,
+    fontSize: 13,
+    color: "#6B7C75",
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  addressCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#E8ECEA",
+    gap: 12,
+  },
+  addressIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addressBody: { flex: 1 },
+  addressTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 2,
+  },
+  addressLabel: { fontSize: 15, fontWeight: "700", color: "#111" },
+  defaultBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  defaultBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+  addressLine: { fontSize: 13, color: "#526B63", lineHeight: 18 },
+  addressMeta: { marginTop: 2, fontSize: 12, color: "#8A948F" },
+  addFab: {
+    position: "absolute",
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    borderRadius: 28,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  addFabText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   headerRow: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 58 : 28,
     left: 16,
     right: 16,
     flexDirection: "row",
@@ -431,6 +658,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
   },
+  roundBtnSpacer: { width: 40, height: 40 },
   headerTitle: {
     flex: 1,
     textAlign: "center",
@@ -453,11 +681,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    maxHeight: "52%",
     backgroundColor: "#fff",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
-    paddingTop: 18,
+    paddingTop: 16,
     elevation: 10,
     shadowColor: "#000",
     shadowOpacity: 0.1,
@@ -468,6 +697,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#000",
+    marginBottom: 2,
+  },
+  osmHint: {
+    fontSize: 12,
+    color: "#8A948F",
     marginBottom: 12,
   },
   fieldLabel: {
@@ -493,7 +727,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 4,
-    marginBottom: 16,
+    marginBottom: 12,
     gap: 8,
   },
   addressInput: {
@@ -510,11 +744,18 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   addressLoadingText: { marginLeft: 8, fontSize: 14, color: "#6B6B6B" },
+  defaultRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  defaultLabel: { fontSize: 14, fontWeight: "600", color: "#14332C" },
   primaryButton: {
     borderRadius: 30,
     paddingVertical: 16,
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 8,
   },
   primaryButtonDisabled: { opacity: 0.55 },
   primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },

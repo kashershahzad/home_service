@@ -19,6 +19,7 @@ import fonts from "../components/assets/fonts";
 import CustomText from "../components/components/CustomText";
 import Icons from "../components/components/Icons";
 import { authApi, bookingApi, getToken } from "../utils/api";
+import { toPersistableProfileImage } from "../utils/profileImage";
 
 const COLORS = {
   primary: "#0E6E4C",
@@ -77,7 +78,7 @@ const STYLIST_TAGS = [
 /** Same as edit-profile / signup: persist image via PUT /auth/profile, return URL. */
 async function resolvePhotoUrlViaProfileApi(token, localUri) {
   if (!localUri) return null;
-  if (/^https?:\/\//i.test(localUri)) return localUri;
+  if (/^(https?:\/\/|data:image\/)/i.test(localUri)) return localUri;
 
   let previousUrl = null;
   try {
@@ -87,10 +88,11 @@ async function resolvePhotoUrlViaProfileApi(token, localUri) {
     // ignore — still try upload
   }
 
+  const persistable = await toPersistableProfileImage(localUri);
   const saved = await authApi.completeProfile(token, {
-    profileImageUrl: localUri,
+    profileImageUrl: persistable,
   });
-  const uploadedUrl = saved?.user?.profileImageUrl || localUri;
+  const uploadedUrl = saved?.user?.profileImageUrl || persistable;
 
   // Restore avatar so review photo doesn't replace profile pic permanently
   if (previousUrl && previousUrl !== uploadedUrl) {

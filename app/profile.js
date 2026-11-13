@@ -19,6 +19,7 @@ import { useBookmarks } from "../context/BookmarkContext";
 import { logout as logoutAuth } from "../store/reducer/AuthConfig";
 import { clearUserData, setUserData } from "../store/reducer/usersSlice";
 import { authApi, deleteToken, getToken } from "../utils/api";
+import { resolveAvatarUri } from "../utils/profileImage";
 
 const COLORS = {
   primary: "#064E3B",
@@ -67,14 +68,15 @@ const MENU_ITEMS = [
     bg: "#E0F2FE",
     route: "/create-pin?mode=update",
   },
-  {
-    key: "biometric",
-    label: "Set Biometric",
-    icon: "scan-outline",
-    color: "#10B981",
-    bg: "#D1FAE5",
-    route: "/fingerprint?mode=update",
-  },
+  // Biometric disabled for now
+  // {
+  //   key: "biometric",
+  //   label: "Set Biometric",
+  //   icon: "scan-outline",
+  //   color: "#10B981",
+  //   bg: "#D1FAE5",
+  //   route: "/fingerprint?mode=update",
+  // },
   {
     key: "bookmark",
     label: "My Bookmark",
@@ -145,9 +147,11 @@ export default function ProfileScreen() {
   const router = useRouter();
   const dispatch = useDispatch();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(null);
   const storedUser = useSelector((state) => state.users.userData);
   const [user, setUser] = useState(storedUser?.id ? storedUser : null);
   const [loading, setLoading] = useState(!storedUser?.id);
+  const [avatarBroken, setAvatarBroken] = useState(false);
   const { refreshForUser, bookmarkedList } = useBookmarks();
   const lastFetchAt = useRef(0);
   const inFlight = useRef(false);
@@ -170,12 +174,16 @@ export default function ProfileScreen() {
       try {
         const token = await getToken();
         if (!token) {
+          setIsLoggedIn(false);
+          setUser(null);
           setLoading(false);
           return;
         }
+        setIsLoggedIn(true);
         const profile = await authApi.getMe(token);
         const userData = profile?.user || profile;
         setUser(userData);
+        setAvatarBroken(false);
         dispatch(setUserData(userData));
         lastFetchAt.current = Date.now();
       } catch (err) {
@@ -191,7 +199,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!user?.id) setLoading(true);
-      loadProfile();
+      loadProfile({ force: true });
     }, [loadProfile, user?.id]),
   );
 
@@ -209,7 +217,9 @@ export default function ProfileScreen() {
             dispatch(logoutAuth());
             dispatch(clearUserData());
             await refreshForUser();
-            router.replace("/letYouIn");
+            setIsLoggedIn(false);
+            setUser(null);
+            router.replace("/home");
           } catch (err) {
             Alert.alert("Error", "Could not log out. Please try again.");
           } finally {
@@ -226,18 +236,71 @@ export default function ProfileScreen() {
     }
   };
 
-  const biometricStatus =
-    user?.biometricEnabled === true ? "On" : user ? "Off" : null;
+  // const biometricStatus =
+  //   user?.biometricEnabled === true ? "On" : user ? "Off" : null;
 
   const displayName = user?.fullName || user?.nickname || "User";
   const subtitle = user?.email || user?.phone || "";
-  const avatarUrl = user?.profileImageUrl || null;
+  const avatarUrl = resolveAvatarUri(user?.profileImageUrl);
   const initials = displayName
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase())
     .join("");
+
+  if (isLoggedIn == null) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.header}>
+          <View style={styles.headerBtn} />
+          <Text style={styles.headerTitle}>Profile</Text>
+          <View style={styles.headerBtn} />
+        </View>
+        <View style={styles.guestWrap}>
+          <ActivityIndicator color={COLORS.primary} size="large" />
+        </View>
+        <BottomTabBar active="profile" />
+      </SafeAreaView>
+    );
+  }
+
+  if (isLoggedIn === false) {
+    return (
+      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            hitSlop={HIT_SLOP}
+            onPress={() => router.replace("/home")}
+          >
+            <Ionicons name="chevron-back" size={26} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Profile</Text>
+          <View style={styles.headerBtn} />
+        </View>
+        <View style={styles.guestWrap}>
+          <View style={[styles.avatar, styles.avatarPlaceholder]}>
+            <Ionicons name="person" size={40} color="#C9A8FF" />
+          </View>
+          <Text style={styles.guestTitle}>Sign in to view your profile</Text>
+          <Text style={styles.guestSubtitle}>
+            Manage bookings, addresses, and offers after login.
+          </Text>
+          <TouchableOpacity
+            style={styles.loginButton}
+            activeOpacity={0.85}
+            onPress={() => router.push("/letYouIn")}
+          >
+            <Text style={styles.loginButtonText}>Login</Text>
+          </TouchableOpacity>
+        </View>
+        <BottomTabBar active="profile" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
@@ -268,8 +331,12 @@ export default function ProfileScreen() {
               <View style={[styles.avatar, styles.avatarPlaceholder]}>
                 <ActivityIndicator color={COLORS.primary} />
               </View>
-            ) : avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+            ) : avatarUrl && !avatarBroken ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                style={styles.avatar}
+                onError={() => setAvatarBroken(true)}
+              />
             ) : (
               <View style={[styles.avatar, styles.avatarPlaceholder]}>
                 {initials ? (
@@ -305,7 +372,7 @@ export default function ProfileScreen() {
               badge={
                 item.key === "bookmark" ? bookmarkedList?.length : undefined
               }
-              status={item.key === "biometric" ? biometricStatus : undefined}
+              status={undefined}
               onPress={() => handleMenuPress(item)}
             />
             {index < MENU_ITEMS.length - 1 ? (
@@ -334,7 +401,7 @@ export default function ProfileScreen() {
           )}
         </TouchableOpacity>
 
-        <Text style={styles.version}>HomeService v1.0.0</Text>
+        <Text style={styles.version}>Homely v1.0.1</Text>
       </ScrollView>
       <BottomTabBar active="profile" />
     </SafeAreaView>
@@ -490,5 +557,39 @@ const styles = StyleSheet.create({
     color: "#B0B0B0",
     fontSize: 12,
     marginTop: 16,
+  },
+  guestWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    paddingBottom: 40,
+  },
+  guestTitle: {
+    marginTop: 18,
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.text,
+    textAlign: "center",
+  },
+  guestSubtitle: {
+    marginTop: 8,
+    fontSize: 14,
+    color: COLORS.subtext,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  loginButton: {
+    marginTop: 24,
+    backgroundColor: COLORS.primary,
+    borderRadius: 28,
+    paddingVertical: 14,
+    paddingHorizontal: 48,
+    alignItems: "center",
+  },
+  loginButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
   },
 });

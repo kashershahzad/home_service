@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -13,6 +11,7 @@ import {
 } from "react-native";
 import { fonts } from "../../../assets/fonts/fonts";
 import { images } from "../../../assets/images/image";
+import ScreenWrapper from "../../../components/components/ScreenWrapper";
 import {
   fetchCatalogCategory,
   mapCatalogAddOns,
@@ -211,23 +210,42 @@ export default function HaircutPackages() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          hitSlop={12}
-        >
-          <Ionicons name="arrow-back" size={22} color={ACCENT} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{title}</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+    <ScreenWrapper
+      backgroundColor={BG}
+      statusBarColor={HEADER_BG}
+      paddingHorizontal={0}
+      scrollEnabled
+      headerUnScrollable={() => (
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            hitSlop={12}
+          >
+            <Ionicons name="arrow-back" size={22} color={ACCENT} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{title}</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+      )}
+      footerUnScrollable={() => (
+        <View style={styles.footer}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={[
+              styles.continueBtn,
+              (!selectedPackage || loading) && styles.continueBtnDisabled,
+            ]}
+            onPress={handleContinue}
+            disabled={!selectedPackage || loading}
+          >
+            <Text style={styles.continueText}>Continue</Text>
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      )}
+    >
+      <View style={styles.scrollContent}>
         <Text style={styles.heroTitle}>{title}</Text>
         <Text style={styles.heroSubtitle}>{subtitle}</Text>
 
@@ -266,23 +284,8 @@ export default function HaircutPackages() {
             ) : null}
           </>
         )}
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          activeOpacity={0.85}
-          style={[
-            styles.continueBtn,
-            (!selectedPackage || loading) && styles.continueBtnDisabled,
-          ]}
-          onPress={handleContinue}
-          disabled={!selectedPackage || loading}
-        >
-          <Text style={styles.continueText}>Continue</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
-        </TouchableOpacity>
       </View>
-    </View>
+    </ScreenWrapper>
   );
 }
 
@@ -295,8 +298,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: HEADER_BG,
-    paddingTop: Platform.OS === "ios" ? 54 : 28,
     paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 12,
   },
   backBtn: {
@@ -506,7 +509,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 20,
-    paddingBottom: Platform.OS === "ios" ? 28 : 18,
+    paddingBottom: 8,
     paddingTop: 10,
     backgroundColor: BG,
   },

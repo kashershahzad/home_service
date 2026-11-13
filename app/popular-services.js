@@ -14,6 +14,8 @@ import {
 import { images } from '../assets/images/image';
 import { useBookmarks } from '../context/BookmarkContext';
 import { serviceApi } from '../utils/api';
+import { requireLogin } from '../utils/authNav';
+import { getBookingRoute } from '../utils/bookingNav';
 
 const COLORS = {
     primary: '#7310FF',
@@ -134,7 +136,19 @@ export default function PopularServicesScreen() {
                     <TouchableOpacity
                         style={styles.card}
                         activeOpacity={0.85}
-                        onPress={() => router.push(`/service/${item._id}`)}
+                        onPress={async () => {
+                            const ok = await requireLogin(router);
+                            if (!ok) return;
+                            router.push(
+                                getBookingRoute({
+                                    id: item._id,
+                                    slug: item.slug || item.category || item._id,
+                                    title: item.title,
+                                    name: item.name,
+                                    bookingFlow: item.bookingFlow,
+                                }),
+                            );
+                        }}
                     >
                         <Image source={{ uri: item.image }} style={styles.image} />
                         <View style={{ flex: 1 }}>

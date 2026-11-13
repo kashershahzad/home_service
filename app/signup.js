@@ -10,12 +10,10 @@ import {
   Animated,
   Image,
   Keyboard,
-  KeyboardAvoidingView,
   Linking,
   Modal,
   PanResponder,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -25,12 +23,14 @@ import {
 } from "react-native";
 import { CountryPicker } from "react-native-country-codes-picker";
 import { MapView, Marker, PROVIDER_GOOGLE } from "../components/Map";
+import ScreenWrapper from "../components/components/ScreenWrapper";
 import { useDispatch } from "react-redux";
 import { useBookmarks } from "../context/BookmarkContext";
 import { setToken } from "../store/reducer/AuthConfig";
 import { setUserData } from "../store/reducer/usersSlice";
 import { authApi, saveToken } from "../utils/api";
 import { buildE164Phone } from "../utils/phone";
+import { toPersistableProfileImage } from "../utils/profileImage";
 const DEFAULT_REGION = {
   latitude: 31.4504,
   longitude: 73.135,
@@ -416,6 +416,9 @@ export default function FillProfileScreen() {
       dispatch(setToken(signupData.token));
 
       // 2) Profile — rest of form data via PUT /auth/profile
+      const profileImageUrl = avatar
+        ? await toPersistableProfileImage(avatar)
+        : null;
       const profileBody = {
         fullName,
         nickname,
@@ -424,7 +427,7 @@ export default function FillProfileScreen() {
         address,
         latitude: locationCoords?.latitude ?? null,
         longitude: locationCoords?.longitude ?? null,
-        profileImageUrl: avatar,
+        profileImageUrl,
       };
       console.log(
         "[signup.js] profile body:",
@@ -449,16 +452,13 @@ export default function FillProfileScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <>
+    <ScreenWrapper
+      backgroundColor="#F6FAF8"
+      statusBarColor="#F6FAF8"
+      paddingHorizontal={24}
+      scrollEnabled={!showDatePicker}
     >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        scrollEnabled={!showDatePicker}
-      >
         <View style={styles.headerRow}>
           <TouchableOpacity
             style={styles.backButton}
@@ -636,7 +636,7 @@ export default function FillProfileScreen() {
             <Text style={styles.primaryButtonText}>Continue</Text>
           )}
         </TouchableOpacity>
-      </ScrollView>
+    </ScreenWrapper>
 
       {showPhotoOptions && (
         <View style={styles.sheetOverlay} pointerEvents="box-none">
@@ -799,14 +799,17 @@ export default function FillProfileScreen() {
           </View>
         </View>
       </Modal>
-    </KeyboardAvoidingView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F6FAF8" },
-  scrollContent: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 },
-  headerRow: { flexDirection: "row", alignItems: "center", marginBottom: 25 },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 25,
+    marginTop: 8,
+  },
   backButton: { marginRight: 12 },
   title: {
     fontFamily: "Roboto_800ExtraBold",

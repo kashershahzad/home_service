@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { Alert, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ChangeAddressForm from "../components/ChangeAddressForm";
 
@@ -12,18 +12,11 @@ export default function ChangeAddressScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={[]}>
       <ChangeAddressForm
-        title="Change Address"
+        title="My Addresses"
         onCancel={goBack}
         onSaved={() => {
-          Alert.alert("Saved", "Your address has been updated.", [
-            {
-              text: "OK",
-              onPress: () =>
-                router.canGoBack()
-                  ? router.back()
-                  : router.replace("/home"),
-            },
-          ]);
+          // Stay on screen so user can add multiple addresses.
+          // Form shows "Add another" / "Done" after each save.
         }}
       />
     </SafeAreaView>

@@ -1,8 +1,9 @@
 import * as Location from "expo-location";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  BackHandler,
   Dimensions,
   FlatList,
   Image,
@@ -19,7 +20,10 @@ import CustomText from "../components/components/CustomText";
 import LimitedOfferCard from "../components/components/LimitedOfferCard";
 import PopularServiceCard from "../components/components/PopularServiceCard";
 import ScreenWrapper from "../components/components/ScreenWrapper";
+import { OFFERS } from "../constants/offers";
 import { addressApi, catalogApi, getToken, homeApi } from "../utils/api";
+import { goHomeAfterAuth, requireLogin } from "../utils/authNav";
+import { getBookingRoute } from "../utils/bookingNav";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_GAP = 12;
@@ -76,7 +80,9 @@ function mapOffer(offer) {
   const discount =
     offer.discountType === "percent" || offer.discountValue != null
       ? `${offer.discountValue ?? offer.percent ?? 0}% OFF`
-      : offer.discount || offer.title || "Special Offer";
+      : offer.percent
+        ? `${String(offer.percent).replace(/%/g, "")}% OFF`
+        : offer.discount || offer.title || "Special Offer";
   return {
     discount,
     subtitle: offer.title || offer.description || offer.subtitle || "",
@@ -84,6 +90,14 @@ function mapOffer(offer) {
     raw: offer,
   };
 }
+
+const GUEST_OFFERS = OFFERS.map((o) =>
+  mapOffer({
+    percent: o.percent,
+    title: o.title,
+    description: o.description,
+  }),
+).filter(Boolean);
 
 function formatBookAgainDate(raw) {
   if (!raw) return "";
@@ -195,7 +209,9 @@ function mapPopularFromCategories(categories = []) {
 
 const home = () => {
   const router = useRouter();
+  const navigation = useNavigation();
   const user = useSelector((state) => state.users.userData);
+  const authToken = useSelector((state) => state.authConfig?.token);
 
   const [loading, setLoading] = useState(true);
   const [coords, setCoords] = useState(DEFAULT_COORDS);
@@ -204,6 +220,7 @@ const home = () => {
   const [offers, setOffers] = useState([]);
   const [bookAgain, setBookAgain] = useState([]);
   const [popular, setPopular] = useState([]);
+  const [hasSession, setHasSession] = useState(!!authToken || !!user?.id);
 
   const lastFetchAt = useRef(0);
   const inFlight = useRef(false);
@@ -337,7 +354,8 @@ const home = () => {
             : homeRes.offer
               ? [homeRes.offer]
               : [];
-          setOffers(offerList.map(mapOffer).filter(Boolean));
+          const mappedOffers = offerList.map(mapOffer).filter(Boolean);
+          setOffers(mappedOffers.length ? mappedOffers : GUEST_OFFERS);
 
           const againRaw = homeRes.bookAgain;
           const againList = Array.isArray(againRaw)
@@ -369,6 +387,7 @@ const home = () => {
                     ? { uri: item.image || item.imageUrl }
                     : FALLBACK_IMAGES[index % FALLBACK_IMAGES.length],
                 slug: item.slug || item.categorySlug,
+                bookingFlow: item.bookingFlow || null,
               })),
             );
           } else if (mergedCats.length) {
@@ -376,10 +395,15 @@ const home = () => {
               mapPopularFromCategories(mergedCats.map((c) => c.raw || c)),
             );
           }
-        } else if (mergedCats.length) {
-          setPopular(
-            mapPopularFromCategories(mergedCats.map((c) => c.raw || c)),
-          );
+        } else {
+          // Guest / no /home: still show catalog services + discount card
+          setOffers(GUEST_OFFERS);
+          setBookAgain([]);
+          if (mergedCats.length) {
+            setPopular(
+              mapPopularFromCategories(mergedCats.map((c) => c.raw || c)),
+            );
+          }
         }
 
         lastFetchAt.current = Date.now();
@@ -395,36 +419,45 @@ const home = () => {
     useCallback(() => {
       // Always refresh location label from change-location addresses API
       loadHomeData({ force: true });
-    }, [loadHomeData]),
+
+      let active = true;
+      (async () => {
+        const token = await getToken();
+        if (active) setHasSession(!!token || !!authToken || !!user?.id);
+      })();
+
+      // Logged-in: never pop into sign-in / letYouIn / PIN screens
+      const onBack = () => {
+        const loggedIn = !!(authToken || user?.id || hasSession);
+        if (!loggedIn) return false;
+
+        if (router.canGoBack() || router.canDismiss?.()) {
+          goHomeAfterAuth(router, navigation);
+          return true;
+        }
+        return false; // exit app
+      };
+      const sub = BackHandler.addEventListener("hardwareBackPress", onBack);
+      return () => {
+        active = false;
+        sub.remove();
+      };
+    }, [
+      loadHomeData,
+      router,
+      navigation,
+      authToken,
+      user?.id,
+      hasSession,
+    ]),
   );
 
-  const activeOffer = offers[0] || null;
+  const activeOffer = offers[0] || GUEST_OFFERS[0] || null;
 
-  const openServiceDetail = (item) => {
-    const id = String(item?.id || item?.slug || item?._id || "");
-    if (!id) return;
-    const imageUri =
-      typeof item?.image === "string"
-        ? item.image
-        : item?.image?.uri || item?.imageUrl || "";
-    router.push({
-      pathname: `/service/${encodeURIComponent(id)}`,
-      params: {
-        id,
-        title: item?.title || item?.label || item?.name || "Service",
-        name: item?.name || item?.title || item?.label || "Service",
-        price:
-          item?.price != null && item?.price !== "—" ? String(item.price) : "",
-        image: imageUri,
-        slug: item?.slug || id,
-        bookingFlow: item?.bookingFlow || "",
-        category: item?.category || item?.label || item?.title || "",
-        rating: item?.rating != null ? String(item.rating) : "",
-        tag: item?.tag || "",
-        subtitle: item?.description || item?.subtitle || "",
-        description: item?.description || item?.subtitle || "",
-      },
-    });
+  const openServiceBooking = async (item) => {
+    const ok = await requireLogin(router);
+    if (!ok) return;
+    router.push(getBookingRoute(item));
   };
 
   const renderPopularService = ({ item }) => (
@@ -437,7 +470,7 @@ const home = () => {
             : Number(item.price).toLocaleString("en-PK"),
       }}
       style={{ width: CARD_WIDTH }}
-      onPress={() => openServiceDetail(item)}
+      onPress={() => openServiceBooking(item)}
     />
   );
 
@@ -600,7 +633,9 @@ const home = () => {
                   <BookAgainCard
                     key={item.id}
                     item={item}
-                    onRebook={() => {
+                    onRebook={async () => {
+                      const ok = await requireLogin(router);
+                      if (!ok) return;
                       const target = getRebookPath(item.raw || item);
                       router.push(target);
                     }}

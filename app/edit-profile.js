@@ -17,7 +17,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch } from "react-redux";
+import { setUserData } from "../store/reducer/usersSlice";
 import { authApi, getToken } from "../utils/api";
+import {
+  resolveAvatarUri,
+  toPersistableProfileImage,
+} from "../utils/profileImage";
 
 const COLORS = {
   primary: "#7310FF",
@@ -34,9 +40,11 @@ const HIT_SLOP = { top: 14, bottom: 14, left: 14, right: 14 };
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const dispatch = useDispatch();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [avatar, setAvatar] = useState(null);
+  const [avatarBroken, setAvatarBroken] = useState(false);
   const [fullName, setFullName] = useState("");
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
@@ -57,7 +65,8 @@ export default function EditProfileScreen() {
         const profile = await authApi.getMe(token);
         const user = profile?.user || profile;
         if (!mounted) return;
-        setAvatar(user?.profileImageUrl || null);
+        setAvatar(resolveAvatarUri(user?.profileImageUrl) || null);
+        setAvatarBroken(false);
         setFullName(user?.fullName || "");
         setNickname(user?.nickname || "");
         setEmail(user?.email || "");
@@ -101,7 +110,10 @@ export default function EditProfileScreen() {
             aspect: [1, 1],
             quality: 0.8,
           });
-          if (!result.canceled) setAvatar(result.assets[0].uri);
+          if (!result.canceled) {
+            setAvatar(result.assets[0].uri);
+            setAvatarBroken(false);
+          }
         },
       },
       {
@@ -128,7 +140,10 @@ export default function EditProfileScreen() {
             aspect: [1, 1],
             quality: 0.8,
           });
-          if (!result.canceled) setAvatar(result.assets[0].uri);
+          if (!result.canceled) {
+            setAvatar(result.assets[0].uri);
+            setAvatarBroken(false);
+          }
         },
       },
       { text: "Cancel", style: "cancel" },
@@ -146,13 +161,26 @@ export default function EditProfileScreen() {
       const token = await getToken();
       if (!token) throw new Error("Please sign in again.");
 
-      await authApi.completeProfile(token, {
+      const profileImageUrl = avatar
+        ? await toPersistableProfileImage(avatar)
+        : null;
+
+      const saved = await authApi.completeProfile(token, {
         fullName: fullName.trim(),
         nickname: nickname.trim(),
         email: email.trim(),
         address: address.trim(),
-        profileImageUrl: avatar,
+        profileImageUrl,
       });
+
+      const nextUser = saved?.user || null;
+      if (nextUser) {
+        dispatch(setUserData(nextUser));
+        setAvatar(resolveAvatarUri(nextUser.profileImageUrl) || profileImageUrl);
+      } else if (profileImageUrl) {
+        dispatch(setUserData({ profileImageUrl }));
+        setAvatar(profileImageUrl);
+      }
 
       Alert.alert("Saved", "Your profile has been updated.", [
         { text: "OK", onPress: () => router.back() },
@@ -163,6 +191,8 @@ export default function EditProfileScreen() {
       setSaving(false);
     }
   };
+
+  const avatarUri = resolveAvatarUri(avatar);
 
   const initials = (fullName || nickname || "U")
     .split(" ")
@@ -209,8 +239,12 @@ export default function EditProfileScreen() {
             activeOpacity={0.85}
             onPress={pickAvatar}
           >
-            {avatar ? (
-              <Image source={{ uri: avatar }} style={styles.avatar} />
+            {avatarUri && !avatarBroken ? (
+              <Image
+                source={{ uri: avatarUri }}
+                style={styles.avatar}
+                onError={() => setAvatarBroken(true)}
+              />
             ) : (
               <View style={[styles.avatar, styles.avatarPlaceholder]}>
                 <Text style={styles.initials}>{initials}</Text>

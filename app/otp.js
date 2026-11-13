@@ -70,7 +70,7 @@ export default function OtpScreen() {
                 style={styles.primaryButton}
                 onPress={() => {
                     Keyboard.dismiss();
-                    router.push('/home');
+                    router.replace('/home');
                 }}
             >
                 <Text style={styles.primaryButtonText}>Sign In</Text>

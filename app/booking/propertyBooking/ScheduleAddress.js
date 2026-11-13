@@ -372,6 +372,7 @@ export default function ScheduleAddress({
           <SafeAreaView style={styles.modalSafe} edges={[]}>
             <ChangeAddressForm
               title="Change Address"
+              allowMultipleAdds={false}
               initialAddress={{
                 ...address,
                 id: addressId || address?.id,

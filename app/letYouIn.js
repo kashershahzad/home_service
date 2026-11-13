@@ -1,14 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useNavigation, useRouter } from "expo-router";
+import { useCallback } from "react";
 import {
-    Image,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import ScreenWrapper from "../components/components/ScreenWrapper";
+import { redirectIfAuthenticated } from "../utils/authNav";
+
 const GoogleIcon = () => (
   <Svg width={20} height={20} viewBox="0 0 48 48">
     <Path
@@ -38,87 +41,92 @@ const GoogleIcon = () => (
 
 export default function LoginScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
+
+  useFocusEffect(
+    useCallback(() => {
+      redirectIfAuthenticated(router, navigation);
+    }, [router, navigation]),
+  );
 
   return (
-    <ScrollView>
-      <View style={styles.container}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="chevron-back" size={26} color="#000" />
-        </TouchableOpacity>
-
-        <View style={styles.illustrationWrapper}>
-          <Image
-            source={require("../assets/images/login-illustration.png")}
-            style={styles.illustration}
-            resizeMode="contain"
-          />
-        </View>
-
-        <Text style={styles.title}>Let’s you in</Text>
-
-        <TouchableOpacity style={styles.socialButton}>
-          <Ionicons name="logo-facebook" size={20} color="#1877F2" />
-          <Text style={styles.socialButtonText}>Continue with Facebook</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.socialButton}>
-          <GoogleIcon />
-          <Text style={styles.socialButtonText}>Continue with Google</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.socialButton}>
-          <Ionicons name="logo-apple" size={20} color="#000" />
-          <Text style={styles.socialButtonText}>Continue with Apple</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.orText}>or</Text>
-
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => router.push("/signInNumber")}
-        >
-          <Text style={styles.primaryButtonText}>Sign in with Number</Text>
-        </TouchableOpacity>
-
+    <ScreenWrapper
+      backgroundColor="#F6FAF8"
+      statusBarColor="#F6FAF8"
+      paddingHorizontal={24}
+      scrollEnabled
+      footerUnScrollable={() => (
         <View style={styles.footerRow}>
-          <Text style={styles.footerText}>Don’t have an account? </Text>
+          <Text style={styles.footerText}>Don't have an account? </Text>
           <TouchableOpacity onPress={() => router.push("/signup")}>
             <Text style={styles.footerLink}>Sign up</Text>
           </TouchableOpacity>
         </View>
+      )}
+    >
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => {
+          if (router.canGoBack()) router.back();
+          else router.replace("/home");
+        }}
+      >
+        <Ionicons name="chevron-back" size={26} color="#000" />
+      </TouchableOpacity>
+
+      <View style={styles.illustrationWrapper}>
+        <Image
+          source={require("../assets/images/login-illustration.png")}
+          style={styles.illustration}
+          resizeMode="contain"
+        />
       </View>
-    </ScrollView>
+
+      <Text style={styles.title}>Let's you in</Text>
+
+      <TouchableOpacity style={styles.socialButton}>
+        <GoogleIcon />
+        <Text style={styles.socialButtonText}>Continue with Google</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.socialButton}>
+        <Ionicons name="logo-apple" size={20} color="#000" />
+        <Text style={styles.socialButtonText}>Continue with Apple</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.orText}>or</Text>
+
+      <TouchableOpacity
+        style={styles.primaryButton}
+        onPress={() => router.push("/signInNumber")}
+      >
+        <Text style={styles.primaryButtonText}>Sign in with Number</Text>
+      </TouchableOpacity>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F6FAF8",
-    paddingHorizontal: 24,
-    paddingTop: 60,
-  },
   backButton: {
-    marginBottom: 20,
+    marginBottom: 12,
+    marginTop: 4,
+    alignSelf: "flex-start",
   },
   illustrationWrapper: {
     alignItems: "center",
     marginBottom: 8,
-    marginTop: -30,
+    marginTop: -10,
   },
   illustration: {
     width: 300,
-    height: 250,
+    height: 220,
   },
   title: {
     fontFamily: "Roboto_800ExtraBold",
     fontSize: 35,
     textAlign: "center",
     color: "#000000",
-    marginBottom: 30,
+    marginBottom: 24,
   },
   socialButton: {
     flexDirection: "row",
@@ -139,7 +147,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#000",
     marginVertical: 10,
-    marginTop: 15,
+    marginTop: 8,
     fontSize: 15,
   },
   primaryButton: {
@@ -147,7 +155,8 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     paddingVertical: 16,
     alignItems: "center",
-    marginTop: 15,
+    marginTop: 8,
+    marginBottom: 16,
   },
   primaryButtonText: {
     color: "#fff",
@@ -157,7 +166,9 @@ const styles = StyleSheet.create({
   footerRow: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: 30,
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
   },
   footerText: {
     color: "#000",
