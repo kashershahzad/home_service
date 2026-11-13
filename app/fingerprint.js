@@ -25,7 +25,7 @@ import {
   saveBiometricCredentials,
 } from "../utils/biometric";
 
-const PURPLE = "#7310FF";
+const PURPLE = "#0E6E4C";
 const DECOR_DOTS = [
   { top: -14, left: 22, size: 12, opacity: 0.9 },
   { top: 8, left: 0, size: 8, opacity: 0.6 },

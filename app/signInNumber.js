@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   phoneInput: { flex: 1, fontSize: 15, color: "#000" },
   errorText: { color: "#FF3B30", fontSize: 13, marginTop: 6, marginBottom: 10 },
   primaryButton: {
-    backgroundColor: "#7310FF",
+    backgroundColor: "#0E6E4C",
     borderRadius: 30,
     paddingVertical: 16,
     alignItems: "center",
@@ -198,5 +198,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   footerText: { color: "#000" },
-  footerLink: { color: "#7310FF", fontWeight: "600" },
+  footerLink: { color: "#0E6E4C", fontWeight: "600" },
 });

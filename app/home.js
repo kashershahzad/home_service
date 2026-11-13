@@ -502,25 +502,21 @@ const home = () => {
           />
           <Image source={images.downarrow} style={{ width: 7, height: 4 }} />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.notificationContainer}
-          onPress={() => router.push("/notifications")}
-        >
-          <Image
-            source={images.notificationIcon}
-            style={{ width: 12, height: 15 }}
-          />
-          <Image
-            source={images.activeNotificationIcon}
-            style={{
-              width: 8,
-              height: 8,
-              position: "absolute",
-              right: 10,
-              top: 9,
-            }}
-          />
-        </TouchableOpacity>
+        {!hasSession ? (
+          <TouchableOpacity
+            style={styles.loginHeaderBtn}
+            activeOpacity={0.85}
+            onPress={() => router.push("/letYouIn")}
+          >
+            <CustomText
+              label="Login"
+              removeTranslation
+              fontSize={12}
+              fontFamily={fonts.bold}
+              color="#FFFFFF"
+            />
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <View style={styles.contentPadding}>
@@ -680,15 +676,13 @@ const styles = StyleSheet.create({
     borderColor: "#064E3B1A",
     maxWidth: "75%",
   },
-  notificationContainer: {
-    backgroundColor: "#FFFFFF",
+  loginHeaderBtn: {
+    backgroundColor: "#0E6E4C",
     borderRadius: 999,
     height: 36,
-    width: 34,
+    paddingHorizontal: 16,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#064E3B1A",
   },
   categoryListContainer: {
     marginTop: 30,

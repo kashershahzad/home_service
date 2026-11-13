@@ -1,3 +1,4 @@
+import { Alert } from "react-native";
 import { getToken } from "./api";
 
 /**
@@ -23,12 +24,38 @@ export function goHomeAfterAuth(router) {
   }
 }
 
-/** Guest → login gate. Returns true if already authenticated. */
+/**
+ * Guest → show Login button prompt (not auto-navigate to login screen).
+ * Returns true if already authenticated.
+ */
 export async function requireLogin(router, redirectTo = "/letYouIn") {
   const token = await getToken();
   if (token) return true;
-  router.push(redirectTo);
-  return false;
+
+  return new Promise((resolve) => {
+    Alert.alert(
+      "Login required",
+      "Please log in to book a service.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+          onPress: () => resolve(false),
+        },
+        {
+          text: "Login",
+          onPress: () => {
+            router.push(redirectTo);
+            resolve(false);
+          },
+        },
+      ],
+      {
+        cancelable: true,
+        onDismiss: () => resolve(false),
+      },
+    );
+  });
 }
 
 /** If already logged in, bounce away from auth screens. */

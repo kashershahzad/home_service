@@ -287,7 +287,7 @@ export default function LoginPinScreen() {
                                 : 'finger-print-outline'
                         }
                         size={22}
-                        color="#7310FF"
+                        color="#0E6E4C"
                     />
                     <Text style={styles.biometricText}>
                         Sign in with {biometricLabel}
@@ -359,14 +359,14 @@ const styles = StyleSheet.create({
         width: 0,
     },
     primaryButton: {
-        backgroundColor: '#7310FF',
+        backgroundColor: '#0E6E4C',
         borderRadius: 30,
         paddingVertical: 16,
         alignItems: 'center',
         marginTop: 40,
     },
     primaryButtonDisabled: {
-        backgroundColor: '#C9A8FF',
+        backgroundColor: '#A7D4C3',
     },
     primaryButtonText: {
         color: '#fff',
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
     },
     biometricText: {
-        color: '#7310FF',
+        color: '#0E6E4C',
         fontWeight: '600',
         fontSize: 15,
     },

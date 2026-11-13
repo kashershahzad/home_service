@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
         marginBottom: 55,
     },
     primaryButton: {
-        backgroundColor: '#7310FF',
+        backgroundColor: '#0E6E4C',
         borderRadius: 30,
         paddingVertical: 16,
         alignItems: 'center',

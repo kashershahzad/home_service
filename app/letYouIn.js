@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   primaryButton: {
-    backgroundColor: "#7310FF",
+    backgroundColor: "#0E6E4C",
     borderRadius: 30,
     paddingVertical: 16,
     alignItems: "center",
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   footerLink: {
-    color: "#7310FF",
+    color: "#0E6E4C",
     fontWeight: "600",
   },
 });

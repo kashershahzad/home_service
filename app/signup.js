@@ -617,7 +617,7 @@ export default function FillProfileScreen() {
             <Ionicons
               name={locationCoords ? "location" : "location-outline"}
               size={22}
-              color={locationCoords ? "#7310FF" : address ? "#000" : "#6B6B6B"}
+              color={locationCoords ? "#0E6E4C" : address ? "#000" : "#6B6B6B"}
             />
           </TouchableOpacity>
         </View>
@@ -662,7 +662,7 @@ export default function FillProfileScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.sheetOptionIcon}>
-                <Ionicons name="camera-outline" size={22} color="#7310FF" />
+                <Ionicons name="camera-outline" size={22} color="#0E6E4C" />
               </View>
               <Text style={styles.sheetOptionText}>Take Photo</Text>
               <Ionicons name="chevron-forward" size={18} color="#C4C4C4" />
@@ -674,7 +674,7 @@ export default function FillProfileScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.sheetOptionIcon}>
-                <Ionicons name="images-outline" size={22} color="#7310FF" />
+                <Ionicons name="images-outline" size={22} color="#0E6E4C" />
               </View>
               <Text style={styles.sheetOptionText}>Choose from Gallery</Text>
               <Ionicons name="chevron-forward" size={18} color="#C4C4C4" />
@@ -747,7 +747,7 @@ export default function FillProfileScreen() {
               coordinate={markerCoordinate}
               draggable
               onDragEnd={handleMarkerDragEnd}
-              pinColor="#7310FF"
+              pinColor="#0E6E4C"
             />
           </MapView>
 
@@ -764,9 +764,9 @@ export default function FillProfileScreen() {
             disabled={isLocating}
           >
             {isLocating ? (
-              <ActivityIndicator size="small" color="#7310FF" />
+              <ActivityIndicator size="small" color="#0E6E4C" />
             ) : (
-              <Ionicons name="navigate-outline" size={22} color="#7310FF" />
+              <Ionicons name="navigate-outline" size={22} color="#0E6E4C" />
             )}
           </TouchableOpacity>
 
@@ -774,7 +774,7 @@ export default function FillProfileScreen() {
             <Text style={styles.mapAddressLabel}>Selected Location</Text>
             {isReverseGeocoding ? (
               <View style={styles.mapAddressLoadingRow}>
-                <ActivityIndicator size="small" color="#7310FF" />
+                <ActivityIndicator size="small" color="#0E6E4C" />
                 <Text style={styles.mapAddressLoadingText}>
                   Finding address…
                 </Text>
@@ -850,7 +850,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#7310FF",
+    backgroundColor: "#0E6E4C",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
@@ -895,13 +895,13 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   primaryButton: {
-    backgroundColor: "#7310FF",
+    backgroundColor: "#0E6E4C",
     borderRadius: 30,
     paddingVertical: 16,
     alignItems: "center",
     marginTop: 30,
   },
-  primaryButtonDisabled: { backgroundColor: "#C9A8FF" },
+  primaryButtonDisabled: { backgroundColor: "#A7D4C3" },
   primaryButtonText: { color: "#fff", fontWeight: "600", fontSize: 16 },
   datePickerDoneButton: {
     alignSelf: "flex-end",
@@ -909,7 +909,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginBottom: 10,
   },
-  datePickerDoneText: { color: "#7310FF", fontWeight: "600", fontSize: 16 },
+  datePickerDoneText: { color: "#0E6E4C", fontWeight: "600", fontSize: 16 },
   sheetOverlay: {
     position: "absolute",
     top: 0,
