@@ -1,23 +1,40 @@
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
-import { Animated, Easing, Image, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Image,
+  StyleSheet,
+  View,
+} from "react-native";
 import { useDispatch } from "react-redux";
 
 const MIN_SPLASH_TIME = 2500;
+/** Teal from Easy App icon */
+const ICON_TEAL = "#00C2AB";
 
 export default function SplashScreen() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const rotation = useRef(new Animated.Value(0)).current;
+  const fade = useRef(new Animated.Value(0.35)).current;
 
   useEffect(() => {
     Animated.loop(
-      Animated.timing(rotation, {
-        toValue: 1,
-        duration: 1200,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
+      Animated.sequence([
+        Animated.timing(fade, {
+          toValue: 1,
+          duration: 600,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(fade, {
+          toValue: 0.35,
+          duration: 600,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
     ).start();
 
     const startTime = Date.now();
@@ -62,25 +79,18 @@ export default function SplashScreen() {
     };
 
     checkAuthAndNavigate();
-  }, [dispatch, router]);
-
-  const spin = rotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
+  }, [dispatch, fade, router]);
 
   return (
     <View style={styles.container}>
       <Image
-        source={require("../assets/images/logo.png")}
+        source={require("../assets/images/icon.png")}
         style={styles.logo}
         resizeMode="contain"
       />
-      <Animated.Image
-        source={require("../assets/images/loader-dots.png")}
-        style={[styles.dotsLoader, { transform: [{ rotate: spin }] }]}
-        resizeMode="contain"
-      />
+      <Animated.View style={[styles.loaderWrap, { opacity: fade }]}>
+        <ActivityIndicator size="large" color={ICON_TEAL} />
+      </Animated.View>
     </View>
   );
 }
@@ -88,18 +98,16 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F6FAF8",
+    backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
   },
   logo: {
-    width: 220,
-    height: 380,
+    width: 160,
+    height: 160,
     marginBottom: 40,
   },
-  dotsLoader: {
-    width: 55,
-    height: 55,
-    marginTop: 60,
+  loaderWrap: {
+    marginTop: 24,
   },
 });

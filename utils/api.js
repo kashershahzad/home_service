@@ -122,7 +122,6 @@ export const addressApi = {
 };
 
 export const bookingApi = {
-  // Postman 07 Salon / 06 Cleaning — Review screen totals
   quote: (token, body) =>
     request("/bookings/quote", { method: "POST", token, body }),
 

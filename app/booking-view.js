@@ -1,9 +1,11 @@
+import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -16,7 +18,7 @@ import { images } from "../assets/images/image";
 import fonts from "../components/assets/fonts";
 import CustomText from "../components/components/CustomText";
 import Icons from "../components/components/Icons";
-import { bookingApi, getToken } from "../utils/api";
+import { authApi, bookingApi, getToken } from "../utils/api";
 
 const COLORS = {
   primary: "#0E6E4C",
@@ -45,18 +47,64 @@ function money(n) {
   return `$${Number(n || 0).toFixed(2)}`;
 }
 
+const DEFAULT_REVIEW_TAGS = [
+  "Professional",
+  "On time",
+  "Friendly",
+  "Good quality",
+  "Attention to detail",
+  "Would hire again",
+];
 const CLEANING_TAGS = [
   "Spotless clean",
   "Punctual",
   "Professional",
   "Eco-friendly products",
+  ...DEFAULT_REVIEW_TAGS.filter(
+    (t) => !["Professional", "On time"].includes(t),
+  ),
 ];
 const STYLIST_TAGS = [
   "Great cut",
   "Punctual",
   "Professional",
   "Friendly",
+  ...DEFAULT_REVIEW_TAGS.filter(
+    (t) => !["Professional", "Friendly", "On time"].includes(t),
+  ),
 ];
+
+/** Same as edit-profile / signup: persist image via PUT /auth/profile, return URL. */
+async function resolvePhotoUrlViaProfileApi(token, localUri) {
+  if (!localUri) return null;
+  if (/^https?:\/\//i.test(localUri)) return localUri;
+
+  let previousUrl = null;
+  try {
+    const me = await authApi.getMe(token);
+    previousUrl = me?.user?.profileImageUrl ?? me?.profileImageUrl ?? null;
+  } catch {
+    // ignore — still try upload
+  }
+
+  const saved = await authApi.completeProfile(token, {
+    profileImageUrl: localUri,
+  });
+  const uploadedUrl = saved?.user?.profileImageUrl || localUri;
+
+  // Restore avatar so review photo doesn't replace profile pic permanently
+  if (previousUrl && previousUrl !== uploadedUrl) {
+    try {
+      await authApi.completeProfile(token, {
+        profileImageUrl: previousUrl,
+      });
+    } catch {
+      // non-fatal
+    }
+  }
+
+  return uploadedUrl;
+}
 
 function ReviewCard({
   providerName,
@@ -74,6 +122,28 @@ function ReviewCard({
     Array.isArray(existingReview?.tags) ? existingReview.tags : [],
   );
   const [note, setNote] = useState(existingReview?.text || "");
+  const [tipAmount, setTipAmount] = useState(
+    existingReview?.tipAmount != null
+      ? String(existingReview.tipAmount)
+      : "",
+  );
+  const [photoUri, setPhotoUri] = useState(
+    existingReview?.photoUrl || null,
+  );
+  const [photoAspect, setPhotoAspect] = useState(4 / 3);
+
+  const setPickedPhoto = (asset) => {
+    if (!asset?.uri) return;
+    setPhotoUri(asset.uri);
+    const w = Number(asset.width) || 0;
+    const h = Number(asset.height) || 0;
+    if (w > 0 && h > 0) {
+      // Clamp so preview stays usable (not tiny strip / not full-screen tall)
+      setPhotoAspect(Math.min(Math.max(w / h, 0.65), 1.8));
+    } else {
+      setPhotoAspect(4 / 3);
+    }
+  };
   const submitted = !!existingReview?.score;
   const firstName = providerName
     ? String(providerName).split(" ")[0]
@@ -89,6 +159,63 @@ function ReviewCard({
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
     );
+  };
+
+  const pickReviewPhoto = () => {
+    if (submitted) return;
+    Alert.alert("Add photo", "Choose a photo for your review", [
+      {
+        text: "Camera",
+        onPress: async () => {
+          const permission = await ImagePicker.requestCameraPermissionsAsync();
+          if (!permission.granted) {
+            Alert.alert(
+              "Permission Needed",
+              "Please enable camera access in Settings.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Open Settings", onPress: () => Linking.openSettings() },
+              ],
+            );
+            return;
+          }
+          const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            quality: 0.8,
+          });
+          if (!result.canceled && result.assets?.[0]) {
+            setPickedPhoto(result.assets[0]);
+          }
+        },
+      },
+      {
+        text: "Gallery",
+        onPress: async () => {
+          const permission =
+            await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (!permission.granted) {
+            Alert.alert(
+              "Permission Needed",
+              "Please enable photo access in Settings.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Open Settings", onPress: () => Linking.openSettings() },
+              ],
+            );
+            return;
+          }
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            quality: 0.8,
+          });
+          if (!result.canceled && result.assets?.[0]) {
+            setPickedPhoto(result.assets[0]);
+          }
+        },
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
   };
 
   return (
@@ -162,6 +289,80 @@ function ReviewCard({
         })}
       </View>
 
+      <CustomText
+        label="PHOTO (OPTIONAL)"
+        removeTranslation
+        fontSize={11}
+        fontFamily={fonts.semiBold}
+        color={COLORS.label}
+        letterSpacing={0.7}
+        marginTop={14}
+        marginBottom={8}
+      />
+      {photoUri ? (
+        <View style={styles.reviewPhotoWrap}>
+          <Image
+            source={{ uri: photoUri }}
+            style={[styles.reviewPhoto, { aspectRatio: photoAspect }]}
+            resizeMode="contain"
+          />
+          {!submitted ? (
+            <View style={styles.reviewPhotoActions}>
+              <TouchableOpacity
+                style={styles.reviewPhotoBtn}
+                onPress={pickReviewPhoto}
+                activeOpacity={0.85}
+              >
+                <CustomText
+                  label="Change"
+                  removeTranslation
+                  fontSize={13}
+                  fontFamily={fonts.semiBold}
+                  color={COLORS.primary}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.reviewPhotoBtn}
+                onPress={() => {
+                  setPhotoUri(null);
+                  setPhotoAspect(4 / 3);
+                }}
+                activeOpacity={0.85}
+              >
+                <CustomText
+                  label="Remove"
+                  removeTranslation
+                  fontSize={13}
+                  fontFamily={fonts.semiBold}
+                  color={COLORS.cancelText}
+                />
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
+      ) : !submitted ? (
+        <TouchableOpacity
+          style={styles.addPhotoBtn}
+          onPress={pickReviewPhoto}
+          activeOpacity={0.85}
+        >
+          <Icons
+            family="Ionicons"
+            name="camera-outline"
+            size={20}
+            color={COLORS.primary}
+          />
+          <CustomText
+            label="Add photo"
+            removeTranslation
+            fontSize={14}
+            fontFamily={fonts.semiBold}
+            color={COLORS.primary}
+            marginLeft={8}
+          />
+        </TouchableOpacity>
+      ) : null}
+
       <TextInput
         style={styles.reviewInput}
         value={note}
@@ -173,18 +374,42 @@ function ReviewCard({
         textAlignVertical="top"
       />
 
+      <CustomText
+        label="TIP (OPTIONAL)"
+        removeTranslation
+        fontSize={11}
+        fontFamily={fonts.semiBold}
+        color={COLORS.label}
+        letterSpacing={0.7}
+        marginTop={14}
+        marginBottom={8}
+      />
+      <TextInput
+        style={styles.tipInput}
+        value={tipAmount}
+        onChangeText={(v) => setTipAmount(v.replace(/[^0-9.]/g, ""))}
+        editable={!submitted}
+        keyboardType="numeric"
+        placeholder="e.g. 500"
+        placeholderTextColor="#9AA39E"
+      />
+
       {!submitted ? (
         <TouchableOpacity
           style={styles.submitReviewBtn}
           activeOpacity={0.88}
           disabled={submitting || rating < 1}
-          onPress={() =>
+          onPress={() => {
+            const tip = tipAmount.trim() === "" ? null : Number(tipAmount);
             onSubmit?.({
-              score: rating,
+              rating,
               tags: selectedTags,
-              text: note.trim(),
-            })
-          }
+              comment: note.trim(),
+              tipAmount:
+                tip != null && Number.isFinite(tip) && tip >= 0 ? tip : null,
+              photoUri: photoUri || null,
+            });
+          }}
         >
           {submitting ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -838,17 +1063,41 @@ function mapBookingDetail(raw = {}) {
       booking.paymentMethod ||
       null,
     review: (() => {
-      const review = booking.review || booking.rating || null;
+      const raw = booking.review;
+      const review =
+        raw && typeof raw === "object"
+          ? raw
+          : booking.rating && typeof booking.rating === "object"
+            ? booking.rating
+            : null;
       const score =
         review?.score ??
         review?.rating ??
+        (typeof booking.rating === "number" ? booking.rating : null) ??
         booking.customerRating ??
         null;
-      if (score == null && !review?.comment && !review?.text) return null;
+      const text =
+        review?.comment ||
+        review?.text ||
+        booking.reviewComment ||
+        "";
+      const tags = Array.isArray(review?.tags) ? review.tags : [];
+      const tipAmount =
+        review?.tipAmount != null ? Number(review.tipAmount) : null;
+      if (
+        score == null &&
+        !text &&
+        !tags.length &&
+        tipAmount == null
+      ) {
+        return null;
+      }
       return {
         score: score != null ? Number(score) : null,
-        text: review?.comment || review?.text || booking.reviewComment || "",
-        tags: Array.isArray(review?.tags) ? review.tags : [],
+        text,
+        tags,
+        tipAmount,
+        photoUrl: review?.photoUrl ?? null,
       };
     })(),
   };
@@ -982,7 +1231,7 @@ export default function BookingViewScreen() {
   }, [booking, router]);
 
   const handleSubmitReview = useCallback(
-    async ({ score, tags, text }) => {
+    async ({ rating, tags, comment, tipAmount, photoUri }) => {
       if (!booking?.id || submittingReview) return;
       setSubmittingReview(true);
       try {
@@ -991,18 +1240,28 @@ export default function BookingViewScreen() {
           Alert.alert("Sign in required", "Please sign in to submit a review.");
           return;
         }
-        await bookingApi.review(token, booking.id, {
-          score,
-          rating: score,
-          tags,
-          comment: text,
-          text,
-        });
+        const photoUrl = photoUri
+          ? await resolvePhotoUrlViaProfileApi(token, photoUri)
+          : null;
+        const body = {
+          rating: Number(rating),
+          tags: Array.isArray(tags) ? tags : [],
+          comment: comment || "",
+          tipAmount: tipAmount == null ? null : Number(tipAmount),
+          photoUrl,
+        };
+        await bookingApi.review(token, booking.id, body);
         setBooking((prev) =>
           prev
             ? {
                 ...prev,
-                review: { score, tags, text },
+                review: {
+                  score: body.rating,
+                  tags: body.tags,
+                  text: body.comment,
+                  tipAmount: body.tipAmount,
+                  photoUrl: body.photoUrl,
+                },
               }
             : prev,
         );
@@ -1238,24 +1497,6 @@ export default function BookingViewScreen() {
             refundNote={booking?.refundNote}
             serviceRole={booking?.serviceRole}
           />
-
-          {showReview ? (
-            <ReviewCard
-              providerName={booking?.providerName}
-              roleLabel={booking?.serviceRole?.role}
-              tags={
-                String(booking?.serviceRole?.role || "")
-                  .toLowerCase()
-                  .includes("stylist")
-                  ? STYLIST_TAGS
-                  : CLEANING_TAGS
-              }
-              existingReview={booking?.review}
-              submitting={submittingReview}
-              onSubmit={handleSubmitReview}
-              onBookAgain={handleBookAgain}
-            />
-          ) : null}
 
           {booking?.hasAssignee && booking?.providerName ? (
             <View style={styles.providerCard}>
@@ -1593,6 +1834,24 @@ export default function BookingViewScreen() {
                 </>
               ) : null}
             </View>
+          ) : null}
+
+          {showReview ? (
+            <ReviewCard
+              providerName={booking?.providerName}
+              roleLabel={booking?.serviceRole?.role}
+              tags={
+                String(booking?.serviceRole?.role || "")
+                  .toLowerCase()
+                  .includes("stylist")
+                  ? STYLIST_TAGS
+                  : CLEANING_TAGS
+              }
+              existingReview={booking?.review}
+              submitting={submittingReview}
+              onSubmit={handleSubmitReview}
+              onBookAgain={handleBookAgain}
+            />
           ) : null}
         </ScrollView>
       )}
@@ -2072,6 +2331,45 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.medium,
     color: COLORS.text,
+  },
+  tipInput: {
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "#F5F7F6",
+    paddingHorizontal: 14,
+    fontSize: 14,
+    fontFamily: fonts.medium,
+    color: COLORS.text,
+  },
+  addPhotoBtn: {
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderStyle: "dashed",
+    backgroundColor: COLORS.primarySoft,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reviewPhotoWrap: {
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#F5F7F6",
+  },
+  reviewPhoto: {
+    width: "100%",
+    backgroundColor: "#EEF2F0",
+  },
+  reviewPhotoActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  reviewPhotoBtn: {
+    paddingVertical: 4,
   },
   submitReviewBtn: {
     marginTop: 14,
