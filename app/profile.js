@@ -77,14 +77,15 @@ const MENU_ITEMS = [
   //   bg: "#D1FAE5",
   //   route: "/fingerprint?mode=update",
   // },
-  {
-    key: "bookmark",
-    label: "My Bookmark",
-    icon: "bookmark-outline",
-    color: "#FF6F91",
-    bg: "#FFE9EC",
-    route: "/my-bookmark",
-  },
+  // Bookmark disabled for now
+  // {
+  //   key: "bookmark",
+  //   label: "My Bookmark",
+  //   icon: "bookmark-outline",
+  //   color: "#FF6F91",
+  //   bg: "#FFE9EC",
+  //   route: "/my-bookmark",
+  // },
   {
     key: "notifications",
     label: "Notifications",
@@ -152,7 +153,7 @@ export default function ProfileScreen() {
   const [user, setUser] = useState(storedUser?.id ? storedUser : null);
   const [loading, setLoading] = useState(!storedUser?.id);
   const [avatarBroken, setAvatarBroken] = useState(false);
-  const { refreshForUser, bookmarkedList } = useBookmarks();
+  const { refreshForUser } = useBookmarks();
   const lastFetchAt = useRef(0);
   const inFlight = useRef(false);
 
@@ -369,9 +370,10 @@ export default function ProfileScreen() {
           <View key={item.key}>
             <MenuRow
               item={item}
-              badge={
-                item.key === "bookmark" ? bookmarkedList?.length : undefined
-              }
+              badge={undefined}
+              // badge={
+              //   item.key === "bookmark" ? bookmarkedList?.length : undefined
+              // }
               status={undefined}
               onPress={() => handleMenuPress(item)}
             />

@@ -2,15 +2,15 @@ import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Linking,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Linking,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
@@ -125,13 +125,9 @@ function ReviewCard({
   );
   const [note, setNote] = useState(existingReview?.text || "");
   const [tipAmount, setTipAmount] = useState(
-    existingReview?.tipAmount != null
-      ? String(existingReview.tipAmount)
-      : "",
+    existingReview?.tipAmount != null ? String(existingReview.tipAmount) : "",
   );
-  const [photoUri, setPhotoUri] = useState(
-    existingReview?.photoUrl || null,
-  );
+  const [photoUri, setPhotoUri] = useState(existingReview?.photoUrl || null);
   const [photoAspect, setPhotoAspect] = useState(4 / 3);
 
   const setPickedPhoto = (asset) => {
@@ -151,8 +147,12 @@ function ReviewCard({
     ? String(providerName).split(" ")[0]
     : roleLabel || "your pro";
   const experienceLabel =
-    String(roleLabel || "").toLowerCase().includes("stylist") ||
-    String(roleLabel || "").toLowerCase().includes("hair")
+    String(roleLabel || "")
+      .toLowerCase()
+      .includes("stylist") ||
+    String(roleLabel || "")
+      .toLowerCase()
+      .includes("hair")
       ? "styling"
       : "cleaning";
 
@@ -176,7 +176,10 @@ function ReviewCard({
               "Please enable camera access in Settings.",
               [
                 { text: "Cancel", style: "cancel" },
-                { text: "Open Settings", onPress: () => Linking.openSettings() },
+                {
+                  text: "Open Settings",
+                  onPress: () => Linking.openSettings(),
+                },
               ],
             );
             return;
@@ -201,7 +204,10 @@ function ReviewCard({
               "Please enable photo access in Settings.",
               [
                 { text: "Cancel", style: "cancel" },
-                { text: "Open Settings", onPress: () => Linking.openSettings() },
+                {
+                  text: "Open Settings",
+                  onPress: () => Linking.openSettings(),
+                },
               ],
             );
             return;
@@ -417,12 +423,7 @@ function ReviewCard({
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <>
-              <Icons
-                family="Ionicons"
-                name="send"
-                size={16}
-                color="#FFFFFF"
-              />
+              <Icons family="Ionicons" name="send" size={16} color="#FFFFFF" />
               <CustomText
                 label="Submit Review"
                 removeTranslation
@@ -478,7 +479,9 @@ function ReviewCard({
 }
 
 function normalizeStatus(raw) {
-  const s = String(raw || "Booked").toLowerCase().replace(/[_\s-]+/g, "");
+  const s = String(raw || "Booked")
+    .toLowerCase()
+    .replace(/[_\s-]+/g, "");
   if (s.includes("cancel")) return "Cancelled";
   if (s.includes("complete") || s === "done") return "Completed";
   if (
@@ -607,6 +610,21 @@ function getServiceRole(categorySlug, categoryName, title) {
   };
 }
 
+function hasTrackingData(tracking) {
+  if (!tracking || typeof tracking !== "object") return false;
+  const lat = tracking.lat ?? tracking.latitude;
+  const lng = tracking.lng ?? tracking.longitude;
+  if (lat == null || lng == null || lat === "" || lng === "") return false;
+  const la = Number(lat);
+  const ln = Number(lng);
+  return (
+    Number.isFinite(la) &&
+    Number.isFinite(ln) &&
+    Math.abs(la) <= 90 &&
+    Math.abs(ln) <= 180
+  );
+}
+
 function buildEtaRange(tracking) {
   if (!tracking) return null;
   const lowRaw =
@@ -623,8 +641,7 @@ function buildEtaRange(tracking) {
       : null);
   if (lowRaw == null || lowRaw === "") return null;
   const low = Number(lowRaw);
-  const high =
-    highRaw != null && highRaw !== "" ? Number(highRaw) : null;
+  const high = highRaw != null && highRaw !== "" ? Number(highRaw) : null;
   if (Number.isNaN(low)) return null;
   if (high != null && !Number.isNaN(high) && high !== low) {
     return { low: String(Math.round(low)), high: String(Math.round(high)) };
@@ -684,7 +701,10 @@ function StatusHero({
       <View style={styles.heroCard}>
         <View style={styles.heroTop}>
           <StatusProgressRing progress={1} size={72}>
-            <Image source={images.successful} style={styles.successImageInner} />
+            <Image
+              source={images.successful}
+              style={styles.successImageInner}
+            />
           </StatusProgressRing>
           <View style={[styles.heroCopy, styles.heroCopyCompleted]}>
             <View style={styles.verifiedRow}>
@@ -822,8 +842,7 @@ function StatusHero({
   // Confirmed → Assigned → On the way — ETA + title + message + arrival
   const isConfirmed = flowStatus === "Confirmed";
   const isAssigned = flowStatus === "Assigned";
-  const etaRange =
-    isConfirmed || isAssigned ? null : buildEtaRange(tracking);
+  const etaRange = isConfirmed || isAssigned ? null : buildEtaRange(tracking);
   const arrivalLabel =
     isConfirmed || isAssigned
       ? null
@@ -1026,10 +1045,7 @@ function mapBookingDetail(raw = {}) {
     providerRating: pro?.rating != null ? String(pro.rating) : null,
     providerBadge: pro?.badge || booking.providerBadge || null,
     providerVehicle:
-      pro?.vehicle ||
-      pro?.transport ||
-      booking.providerVehicle ||
-      null,
+      pro?.vehicle || pro?.transport || booking.providerVehicle || null,
     providerPhone: pro?.phone || pro?.mobile || null,
     hasAssignee: assignees.length > 0,
     dateLabel,
@@ -1037,7 +1053,8 @@ function mapBookingDetail(raw = {}) {
     appointmentTimeWithDuration,
     addressLine,
     addressNotes,
-    addressVerified: address.verified === true || booking.homeAccessVerified === true,
+    addressVerified:
+      address.verified === true || booking.homeAccessVerified === true,
     headline:
       booking.headline ||
       booking.statusCard?.headline ||
@@ -1079,19 +1096,11 @@ function mapBookingDetail(raw = {}) {
         booking.customerRating ??
         null;
       const text =
-        review?.comment ||
-        review?.text ||
-        booking.reviewComment ||
-        "";
+        review?.comment || review?.text || booking.reviewComment || "";
       const tags = Array.isArray(review?.tags) ? review.tags : [];
       const tipAmount =
         review?.tipAmount != null ? Number(review.tipAmount) : null;
-      if (
-        score == null &&
-        !text &&
-        !tags.length &&
-        tipAmount == null
-      ) {
+      if (score == null && !text && !tags.length && tipAmount == null) {
         return null;
       }
       return {
@@ -1203,11 +1212,13 @@ export default function BookingViewScreen() {
     status === "Confirmed" ||
     status === "Assigned" ||
     status === "OnTheWay";
+  // Track only when API sends live tracking coords (lat/lng)
   const showTrack =
-    status === "Booked" ||
-    status === "Confirmed" ||
-    status === "Assigned" ||
-    status === "OnTheWay";
+    (status === "Booked" ||
+      status === "Confirmed" ||
+      status === "Assigned" ||
+      status === "OnTheWay") &&
+    hasTrackingData(booking?.tracking);
   const showRebook = status === "Cancelled";
   const showReview = status === "Completed";
   const showFooter = showCancel || showRebook;
@@ -1290,12 +1301,11 @@ export default function BookingViewScreen() {
         reference: booking?.reference || "",
         serviceTitle: booking?.title || "",
         categorySlug: booking?.categorySlug || "",
-        appointment: booking?.appointmentTimeWithDuration || booking?.startTime || "",
+        appointment:
+          booking?.appointmentTimeWithDuration || booking?.startTime || "",
         addressLine: booking?.addressLine || "",
         total:
-          booking?.pricing?.total != null
-            ? String(booking.pricing.total)
-            : "",
+          booking?.pricing?.total != null ? String(booking.pricing.total) : "",
       },
     });
   }, [booking, bookingId, router]);
@@ -1340,9 +1350,7 @@ export default function BookingViewScreen() {
       pricing.lineItems.forEach((item, idx) => {
         const label = item?.label || item?.name || item?.title;
         const value =
-          item?.value ??
-          item?.amount ??
-          (item?.free === true ? "FREE" : null);
+          item?.value ?? item?.amount ?? (item?.free === true ? "FREE" : null);
         if (!label || value == null || value === "") return;
         rows.push({
           key: `line-${idx}`,
@@ -1381,8 +1389,7 @@ export default function BookingViewScreen() {
         key: "kit",
         label: "Safety & sterilized kit fee",
         value: Number(pricing.kitFee) === 0 ? "FREE" : money(pricing.kitFee),
-        valueColor:
-          Number(pricing.kitFee) === 0 ? COLORS.free : COLORS.text,
+        valueColor: Number(pricing.kitFee) === 0 ? COLORS.free : COLORS.text,
         info: true,
       });
     }
@@ -1452,10 +1459,7 @@ export default function BookingViewScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator
-          color={COLORS.primary}
-          style={{ marginTop: 40 }}
-        />
+        <ActivityIndicator color={COLORS.primary} style={{ marginTop: 40 }} />
       ) : error ? (
         <View style={styles.stateWrap}>
           <CustomText
@@ -1671,9 +1675,7 @@ export default function BookingViewScreen() {
                 />
               </View>
               <CustomText
-                label={
-                  booking?.serviceRole?.chat || "Chat with your pro"
-                }
+                label={booking?.serviceRole?.chat || "Chat with your pro"}
                 removeTranslation
                 fontSize={15}
                 fontFamily={fonts.bold}
