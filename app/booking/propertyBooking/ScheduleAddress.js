@@ -11,7 +11,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { fonts } from "../../../assets/fonts/fonts";
 import { images } from "../../../assets/images/image";
 import ChangeAddressForm from "../../../components/ChangeAddressForm";
@@ -232,6 +235,10 @@ export default function ScheduleAddress({
     };
   }, [catalogSlug, loadCatalogSlots, initialTimeSlots, defaultSlotId]);
 
+  const insets = useSafeAreaInsets();
+  const footerBottom =
+    Math.max(insets.bottom, Platform.OS === "android" ? 28 : 12) + 10;
+
   const selectedDate = dateOptions.find((d) => d.id === selectedDateId);
   const monthLabel = selectedDate
     ? selectedDate.date.toLocaleDateString("en-US", {
@@ -257,7 +264,7 @@ export default function ScheduleAddress({
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 }]}
         showsVerticalScrollIndicator={false}
       >
         <StepsHeader
@@ -368,39 +375,39 @@ export default function ScheduleAddress({
             </View>
           </View>
         </View>
-
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={styles.continueBtn}
-            onPress={handleContinue}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.continueText}>Continue</Text>
-            <Ionicons name="arrow-forward" size={18} color="#fff" />
-          </TouchableOpacity>
-        </View>
-
-        <Modal
-          visible={changeOpen}
-          animationType="slide"
-          presentationStyle="fullScreen"
-          onRequestClose={() => setChangeOpen(false)}
-        >
-          <SafeAreaView style={styles.modalSafe} edges={[]}>
-            <ChangeAddressForm
-              title="Change Address"
-              allowMultipleAdds={false}
-              pickFromList
-              onCancel={() => setChangeOpen(false)}
-              onSaved={({ addressId: id, address: next }) => {
-                setAddressId(id);
-                setAddress(next);
-                setChangeOpen(false);
-              }}
-            />
-          </SafeAreaView>
-        </Modal>
       </ScrollView>
+
+      <View style={[styles.footer, { paddingBottom: footerBottom }]}>
+        <TouchableOpacity
+          style={styles.continueBtn}
+          onPress={handleContinue}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.continueText}>Continue</Text>
+          <Ionicons name="arrow-forward" size={18} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      <Modal
+        visible={changeOpen}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setChangeOpen(false)}
+      >
+        <SafeAreaView style={styles.modalSafe} edges={[]}>
+          <ChangeAddressForm
+            title="Change Address"
+            allowMultipleAdds={false}
+            pickFromList
+            onCancel={() => setChangeOpen(false)}
+            onSaved={({ addressId: id, address: next }) => {
+              setAddressId(id);
+              setAddress(next);
+              setChangeOpen(false);
+            }}
+          />
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 }
@@ -409,7 +416,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F6FAF8" },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: Platform.OS === "ios" ? 28 : 20,
   },
   contentBody: {
     paddingHorizontal: 20,
@@ -601,8 +607,10 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 20,
-    paddingTop: 24,
-    backgroundColor: "transparent",
+    paddingTop: 12,
+    backgroundColor: "#F6FAF8",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#D5DDD9",
   },
   continueBtn: {
     height: 54,
