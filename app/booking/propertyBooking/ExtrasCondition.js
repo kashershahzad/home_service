@@ -11,10 +11,7 @@ import {
   View,
 } from "react-native";
 import { fonts } from "../../../assets/fonts/fonts";
-import {
-  fetchCatalogCategory,
-  mapCatalogAddOns,
-} from "../../../utils/catalog";
+import { fetchCatalogCategory, mapCatalogAddOns } from "../../../utils/catalog";
 import StepsHeader from "./components/StepsHeader";
 import { EXTRAS_CATALOG } from "./constants/extras";
 
@@ -78,12 +75,7 @@ export default function ExtrasCondition({
     if (Array.isArray(catalogAddOns) && catalogAddOns.length) {
       setExtras(catalogAddOns);
       setLoading(false);
-      if (!initialExtras?.length) {
-        const defaults = catalogAddOns
-          .filter((a) => ["windows", "inside-oven", "oven"].includes(a.slug))
-          .map((a) => a.id);
-        if (defaults.length) setSelectedExtras(defaults);
-      }
+      // No defaults — user must pick extras manually
       return;
     }
 
@@ -96,13 +88,9 @@ export default function ExtrasCondition({
         if (!mounted) return;
         if (mapped.length) {
           setExtras(mapped);
-          if (!initialExtras?.length) {
-            const defaults = mapped
-              .filter((a) =>
-                ["windows", "inside-oven", "oven"].includes(a.slug),
-              )
-              .map((a) => a.id);
-            setSelectedExtras(defaults);
+          // Keep whatever the user already chose (or empty)
+          if (initialExtras?.length) {
+            setSelectedExtras(initialExtras);
           }
         }
       } catch (err) {
@@ -172,9 +160,7 @@ export default function ExtrasCondition({
             </View>
           )}
 
-          {error ? (
-            <Text style={styles.errorText}>{error}</Text>
-          ) : null}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
         </View>
 
         <View style={styles.footer}>

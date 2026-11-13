@@ -151,7 +151,7 @@ export default function HaircutReviewBooking() {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={ACCENT} />
-        <Text style={styles.loadingText}>Getting your quote…</Text>
+        <Text style={styles.loadingText}>Calculating…</Text>
       </View>
     );
   }

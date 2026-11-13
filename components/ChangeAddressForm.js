@@ -9,6 +9,7 @@ import {
   Linking,
   Platform,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Switch,
   Text,
@@ -21,6 +22,7 @@ import { addressApi, getToken } from "../utils/api";
 import OsmMapPicker from "./OsmMapPicker";
 
 const ACCENT = "#0E6E4C";
+const SCREEN_BG = "#F6FAF8";
 const DEFAULT_REGION = {
   latitude: 31.52,
   longitude: 74.35,
@@ -97,6 +99,8 @@ export default function ChangeAddressForm({
   title = "Change Address",
   /** When true, after save ask “Add another” (profile addresses). */
   allowMultipleAdds = true,
+  /** Booking “Change” — open list; tapping an address selects it (no edit map). */
+  pickFromList = false,
 }) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef(null);
@@ -228,7 +232,7 @@ export default function ChangeAddressForm({
         const list = await loadAddresses();
         if (!mounted) return;
 
-        if (initialAddress?.id || initialAddress?._id) {
+        if (!pickFromList && (initialAddress?.id || initialAddress?._id)) {
           const match =
             list.find(
               (a) =>
@@ -244,7 +248,9 @@ export default function ChangeAddressForm({
         }
       } catch (err) {
         console.log("[address] load failed:", err?.message || err);
-        if (!initialAddress) openNewAddress();
+        if (pickFromList || !initialAddress) {
+          setMode("list");
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -336,11 +342,22 @@ export default function ChangeAddressForm({
     }
   };
 
-  const topPad = Math.max(insets.top, Platform.OS === "ios" ? 12 : 8);
+  // StatusBar is opaque (translucent=false) so Android already lays out
+  // below the bar — only add a small gap. iOS still needs insets.top.
+  const topPad =
+    Platform.OS === "ios"
+      ? Math.max(insets.top, 12) + 10
+      : Math.max(insets.top, 0) + 16;
+  const bottomPad = Math.max(insets.bottom, Platform.OS === "android" ? 32 : 16);
 
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={SCREEN_BG}
+          translucent={false}
+        />
         <ActivityIndicator color={accent} size="large" />
       </View>
     );
@@ -349,6 +366,11 @@ export default function ChangeAddressForm({
   if (mode === "list") {
     return (
       <View style={[styles.container, { paddingTop: topPad }]}>
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={SCREEN_BG}
+          translucent={false}
+        />
         <View style={styles.listHeader}>
           <TouchableOpacity
             style={styles.roundBtn}
@@ -366,7 +388,7 @@ export default function ChangeAddressForm({
           keyExtractor={(item) => item.id}
           contentContainerStyle={[
             styles.listContent,
-            { paddingBottom: Math.max(insets.bottom, 16) + 88 },
+            { paddingBottom: bottomPad + 96 },
           ]}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
@@ -381,7 +403,13 @@ export default function ChangeAddressForm({
             <TouchableOpacity
               style={styles.addressCard}
               activeOpacity={0.85}
-              onPress={() => openEditAddress(item)}
+              onPress={() => {
+                if (pickFromList) {
+                  onSaved?.({ addressId: item.id, address: item });
+                  return;
+                }
+                openEditAddress(item);
+              }}
             >
               <View
                 style={[styles.addressIcon, { backgroundColor: `${accent}18` }]}
@@ -409,26 +437,32 @@ export default function ChangeAddressForm({
           )}
         />
 
-        <TouchableOpacity
+        <View
           style={[
-            styles.addFab,
-            {
-              backgroundColor: accent,
-              bottom: Math.max(insets.bottom, 16) + 12,
-            },
+            styles.addFabBar,
+            { paddingBottom: bottomPad, backgroundColor: SCREEN_BG },
           ]}
-          activeOpacity={0.9}
-          onPress={openNewAddress}
         >
-          <Ionicons name="add" size={22} color="#fff" />
-          <Text style={styles.addFabText}>Add Address</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.addFab, { backgroundColor: accent }]}
+            activeOpacity={0.9}
+            onPress={openNewAddress}
+          >
+            <Ionicons name="add" size={22} color="#fff" />
+            <Text style={styles.addFabText}>Add Address</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor={SCREEN_BG}
+        translucent={false}
+      />
       <OsmMapPicker
         ref={mapRef}
         style={styles.map}
@@ -440,7 +474,7 @@ export default function ChangeAddressForm({
         }}
       />
 
-      <View style={[styles.headerRow, { top: topPad + 8 }]}>
+      <View style={[styles.headerRow, { top: topPad }]}>
         <TouchableOpacity
           style={styles.roundBtn}
           onPress={() => {
@@ -469,10 +503,7 @@ export default function ChangeAddressForm({
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={[
-          styles.bottomCard,
-          { paddingBottom: Math.max(insets.bottom, 16) + 12 },
-        ]}
+        style={[styles.bottomCard, { paddingBottom: bottomPad + 12 }]}
       >
         <ScrollView
           keyboardShouldPersistTaps="handled"
@@ -546,7 +577,7 @@ export default function ChangeAddressForm({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F6FAF8" },
+  container: { flex: 1, backgroundColor: SCREEN_BG },
   centered: { alignItems: "center", justifyContent: "center" },
   map: {
     ...StyleSheet.absoluteFillObject,
@@ -555,7 +586,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 12,
     gap: 10,
   },
   listTitle: {
@@ -621,15 +652,24 @@ const styles = StyleSheet.create({
   defaultBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
   addressLine: { fontSize: 13, color: "#526B63", lineHeight: 18 },
   addressMeta: { marginTop: 2, fontSize: 12, color: "#8A948F" },
-  addFab: {
+  addFabBar: {
     position: "absolute",
-    alignSelf: "center",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingTop: 10,
+    paddingHorizontal: 20,
+    alignItems: "center",
+  },
+  addFab: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     paddingHorizontal: 22,
     paddingVertical: 14,
     borderRadius: 28,
+    minWidth: 180,
     elevation: 4,
     shadowColor: "#000",
     shadowOpacity: 0.18,
@@ -644,6 +684,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    zIndex: 2,
   },
   roundBtn: {
     width: 40,
@@ -681,7 +722,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    maxHeight: "52%",
+    maxHeight: "55%",
     backgroundColor: "#fff",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fonts } from "../../../assets/fonts/fonts";
 import { images } from "../../../assets/images/image";
 import StepsHeader from "./components/StepsHeader";
@@ -227,16 +228,22 @@ export default function ReviewBooking({
     ? `${schedule.displayTime}${durationHint}`
     : "Time not selected";
 
+  const insets = useSafeAreaInsets();
   const primary = isPackage ? packageSummary : property;
   const primaryLabel = isPackage ? "PACKAGE" : "PROPERTY";
   const servicePriceLabel = isPackage
     ? packageInfo?.title || "Hair dressing"
     : "Cleaning service";
+  const footerBottom =
+    Math.max(insets.bottom, Platform.OS === "android" ? 28 : 12) + 10;
 
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: 24 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <StepsHeader
@@ -365,23 +372,23 @@ export default function ReviewBooking({
             <Text style={styles.errorText}>{confirmError}</Text>
           ) : null}
         </View>
-
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.continueBtn, confirming && styles.continueBtnDisabled]}
-            onPress={onConfirm}
-            activeOpacity={0.85}
-            disabled={confirming}
-          >
-            <Text style={styles.continueText}>
-              {confirming ? "Booking..." : "Confirm & Book"}
-            </Text>
-            {!confirming ? (
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
-            ) : null}
-          </TouchableOpacity>
-        </View>
       </ScrollView>
+
+      <View style={[styles.footer, { paddingBottom: footerBottom }]}>
+        <TouchableOpacity
+          style={[styles.continueBtn, confirming && styles.continueBtnDisabled]}
+          onPress={onConfirm}
+          activeOpacity={0.85}
+          disabled={confirming}
+        >
+          <Text style={styles.continueText}>
+            {confirming ? "Booking..." : "Confirm & Book"}
+          </Text>
+          {!confirming ? (
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
+          ) : null}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -390,7 +397,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F2F4F3" },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: Platform.OS === "ios" ? 28 : 20,
   },
   contentBody: {
     paddingHorizontal: 20,
@@ -572,8 +578,10 @@ const styles = StyleSheet.create({
 
   footer: {
     paddingHorizontal: 20,
-    paddingTop: 24,
-    backgroundColor: "transparent",
+    paddingTop: 12,
+    backgroundColor: "#F2F4F3",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#D5DDD9",
   },
   continueBtn: {
     height: 54,

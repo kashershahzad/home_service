@@ -68,8 +68,8 @@ export default function PropertyDetails({
   const [plotUnit, setPlotUnit] = useState(initialDetails?.plotUnit || "marla");
   const [plotSize, setPlotSize] = useState(initialDetails?.plotSize || 10);
   const [stories, setStories] = useState(initialDetails?.stories || "double");
-  const [areaUnit, setAreaUnit] = useState(initialDetails?.areaUnit || "marla");
-  const [areaSize, setAreaSize] = useState(initialDetails?.areaSize || 10);
+  const [areaUnit, setAreaUnit] = useState(initialDetails?.areaUnit || "sqft");
+  const [areaSize, setAreaSize] = useState(initialDetails?.areaSize || 1000);
   const [hasWashrooms, setHasWashrooms] = useState(
     initialDetails?.hasWashrooms || "Yes",
   );

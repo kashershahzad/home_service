@@ -71,6 +71,20 @@ function buildDateOptions(count = 7) {
   });
 }
 
+/** Pick morning / afternoon / evening from the device clock. */
+function getDefaultTimeSlotId(now = new Date()) {
+  const hour = now.getHours();
+  if (hour < 12) return "morning";
+  if (hour < 16) return "afternoon";
+  return "evening";
+}
+
+function resolveSlotId(preferredId, slots = []) {
+  if (!slots.length) return preferredId;
+  if (slots.some((s) => s.id === preferredId)) return preferredId;
+  return slots[0].id;
+}
+
 function TimeSlotCard({ item, selected, onPress }) {
   return (
     <TouchableOpacity
@@ -112,6 +126,10 @@ export default function ScheduleAddress({
   totalSteps = 6,
 }) {
   const dateOptions = useMemo(() => buildDateOptions(7), []);
+  const defaultSlotId = useMemo(
+    () => initialSchedule?.timeSlotId || getDefaultTimeSlotId(),
+    [initialSchedule?.timeSlotId],
+  );
   const [timeSlots, setTimeSlots] = useState(
     Array.isArray(initialTimeSlots) && initialTimeSlots.length
       ? initialTimeSlots
@@ -122,10 +140,15 @@ export default function ScheduleAddress({
       !(Array.isArray(initialTimeSlots) && initialTimeSlots.length),
   );
   const [selectedDateId, setSelectedDateId] = useState(
-    initialSchedule?.dateId || dateOptions[2]?.id || dateOptions[0]?.id,
+    initialSchedule?.dateId || dateOptions[0]?.id,
   );
-  const [timeSlotId, setTimeSlotId] = useState(
-    initialSchedule?.timeSlotId || "afternoon",
+  const [timeSlotId, setTimeSlotId] = useState(() =>
+    resolveSlotId(
+      defaultSlotId,
+      Array.isArray(initialTimeSlots) && initialTimeSlots.length
+        ? initialTimeSlots
+        : FALLBACK_TIME_SLOTS,
+    ),
   );
   const [address, setAddress] = useState(
     initialSchedule?.address || DEFAULT_ADDRESS,
@@ -178,11 +201,7 @@ export default function ScheduleAddress({
   useEffect(() => {
     if (Array.isArray(initialTimeSlots) && initialTimeSlots.length) {
       setTimeSlots(initialTimeSlots);
-      setTimeSlotId((prev) =>
-        initialTimeSlots.some((s) => s.id === prev)
-          ? prev
-          : initialTimeSlots[0].id,
-      );
+      setTimeSlotId(resolveSlotId(defaultSlotId, initialTimeSlots));
       setSlotsLoading(false);
       return;
     }
@@ -200,9 +219,7 @@ export default function ScheduleAddress({
         if (!mounted) return;
         if (mapped.length) {
           setTimeSlots(mapped);
-          setTimeSlotId((prev) =>
-            mapped.some((s) => s.id === prev) ? prev : mapped[0].id,
-          );
+          setTimeSlotId(resolveSlotId(defaultSlotId, mapped));
         }
       } catch (err) {
         console.log("[catalog] timeSlots failed:", err?.message || err);
@@ -213,7 +230,7 @@ export default function ScheduleAddress({
     return () => {
       mounted = false;
     };
-  }, [catalogSlug, loadCatalogSlots, initialTimeSlots]);
+  }, [catalogSlug, loadCatalogSlots, initialTimeSlots, defaultSlotId]);
 
   const selectedDate = dateOptions.find((d) => d.id === selectedDateId);
   const monthLabel = selectedDate
@@ -373,12 +390,7 @@ export default function ScheduleAddress({
             <ChangeAddressForm
               title="Change Address"
               allowMultipleAdds={false}
-              initialAddress={{
-                ...address,
-                id: addressId || address?.id,
-                lat: address?.lat,
-                lng: address?.lng,
-              }}
+              pickFromList
               onCancel={() => setChangeOpen(false)}
               onSaved={({ addressId: id, address: next }) => {
                 setAddressId(id);

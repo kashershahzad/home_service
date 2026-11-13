@@ -15,13 +15,13 @@ export default function AreaContent({
     <UnitMeasurementBlock
       title={label}
       unitOptions={[
-        { id: "marla", label: "Marla" },
         { id: "sqft", label: "sq ft" },
+        { id: "marla", label: "Marla" },
       ]}
       unitValue={areaUnit}
       onUnitChange={(id) => {
         onAreaUnitChange(id);
-        onAreaSizeChange(id === "marla" ? 10 : 1000);
+        onAreaSizeChange(id === "sqft" ? 1000 : 10);
       }}
       sizeValue={areaSize}
       unitLabel={unitLabel}
